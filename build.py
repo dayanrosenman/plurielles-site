@@ -8,6 +8,8 @@ import os
 import re
 import shutil
 import json
+import zipfile
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 try:
@@ -20,6 +22,8 @@ except ImportError:
 SOURCE_BASE = Path("/Users/david/ClaudeCode/plurielles/PLURIELLES")
 ARTICLES_BY_ISSUE = Path("/Users/david/ClaudeCode/plurielles/Articles Plurielles 7-23") / "Plurielles de 7 à 23 "
 ARTICLES_PL23 = SOURCE_BASE / "Articles de PL23"
+ARTICLES_PL24_DIR = SOURCE_BASE / "PL24 corr 10:9:23"
+ARTICLES_PL24_ALT = SOURCE_BASE / "Derniers documents PL24"
 PDF_ISSUES = SOURCE_BASE / "matériel pour site revueplurielles" / "Plurielles en PDF"
 SCANNED_PDFS = SOURCE_BASE / "Materiel p site PL p DDR"
 OUTPUT = Path("/Users/david/ClaudeCode/plurielles-site")
@@ -456,6 +460,42 @@ def extract_pdf_text(pdf_path):
     except Exception as e:
         print(f"  Error reading {pdf_path}: {e}")
         return []
+
+
+def extract_docx_text(docx_path):
+    """Extract paragraph texts from a DOCX file as a list of strings."""
+    _W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'
+    try:
+        with zipfile.ZipFile(str(docx_path)) as z:
+            with z.open('word/document.xml') as f:
+                tree = ET.parse(f)
+        paras = []
+        for p in tree.findall(f'.//{{{_W}}}p'):
+            # Collect all text runs, including those inside hyperlinks
+            text = ''.join(
+                t.text or ''
+                for t in p.findall(f'.//{{{_W}}}t')
+            )
+            paras.append(text)
+        return paras
+    except Exception as e:
+        print(f"  Error reading {docx_path}: {e}")
+        return []
+
+
+def docx_paras_to_html(raw_paras):
+    """Convert DOCX paragraph list to HTML, filtering boilerplate."""
+    paragraphs = []
+    for p in raw_paras:
+        s = p.strip()
+        if not s:
+            continue
+        # Skip very short lines (likely headers/footers/page numbers)
+        if len(s) < 4:
+            continue
+        paragraphs.append(s)
+    # Run through the same footnote pipeline as PDF articles
+    return paragraphs_to_html(paragraphs)
 
 
 def text_to_paragraphs(text):
@@ -1591,7 +1631,7 @@ def generate_issues_index(all_issues):
 
 def generate_issue_page(n, info, articles_html, pdf_path=None, depth=2):
     has_pdf = pdf_path is not None and Path(pdf_path).exists()
-    pdf_link = f'<a href="../../assets/pdfs/pl{n:02d}.pdf" class="btn btn--outline" style="color:var(--clr-dark); border-color:var(--clr-border)">Télécharger le PDF</a>' if has_pdf else ""
+    pdf_link = f'<a href="../../assets/pdfs/pl{n:02d}.pdf" class="btn btn--outline">Télécharger le PDF</a>' if has_pdf else ""
 
     content = f"""
 {breadcrumb(("Accueil", "../../index.html"), ("Numéros", "../index.html"), (f"N° {n}", None))}
@@ -2089,27 +2129,117 @@ def build():
         issue_html = generate_issue_page(n, info, articles_html, pdf_path)
         (issue_out / "index.html").write_text(issue_html, encoding="utf-8")
 
-    # Issue 24: TOC with PDF
-    print("  Processing issue 24...")
+    # Issue 24: individual DOCX articles
+    print("  Processing issue 24 (DOCX articles)...")
     issue24_out = OUTPUT / "numeros" / "pl24"
+    articles24_out = issue24_out / "articles"
     issue24_out.mkdir(exist_ok=True)
-    info24 = ISSUES[24]
-    pdf24_link = '<a href="../../assets/pdfs/pl24.pdf" style="color:var(--clr-primary)">Télécharger le PDF complet</a>'
-    articles24_html = f"<p style='color:var(--clr-muted); font-family:var(--font-ui); font-size:0.9rem; margin-bottom:2rem; padding:1rem; background:#f4f0e8; border-radius:4px;'>Les articles de ce numéro ne sont pas encore disponibles individuellement en texte. → {pdf24_link}</p>"
-    articles24_html += '<p class="article-list__section-header">Index des articles du numéro</p>\n'
-    articles24_html += '<ul class="article-list">\n'
-    for j, (author, title) in enumerate(info24['articles']):
-        articles24_html += f"""<li class="article-list__item">
-    <div class="article-list__link">
+    articles24_out.mkdir(exist_ok=True)
+
+    D = ARTICLES_PL24_DIR   # main folder
+    A = ARTICLES_PL24_ALT   # alternate folder
+
+    def find_docx(folder, stem_prefix):
+        """Glob for a DOCX whose filename starts with stem_prefix (handles encoding variants)."""
+        matches = sorted(folder.glob(f"{stem_prefix}*.docx"))
+        return matches[0] if matches else folder / f"{stem_prefix}.docx"
+
+    # (slug, author, title, docx_path)
+    PL24_ARTICLES_LIST = [
+        ("article-01", "Izio Rosenman",
+         "Éditorial — Juif visible / Juif invisible",
+         D / "Izio Rosenman PL24 Edito.docx"),
+        ("article-02", "Livia Parnes",
+         "Le sens (impré)visible de l'invisible : le cas du marranisme portugais",
+         D / "Livia Parnes. Visible-invisible.docx"),
+        ("article-03", "Chantal Meyer-Plantureux",
+         "Le Juif au théâtre au XIXe — La belle époque de l'antisémitisme",
+         D / "Chantal Meyer-Plantureux, Le Juif au théâtre au xixème. La belle époque de l'antisémitisme.docx"),
+        ("article-04", "Sylvie Lindeperg",
+         "Vie et destin des « images de la Shoah » — Cécité, invisibilité, hyper-réalité",
+         D / "Sylvie Lindeperg. Vie et destin des images de la Shoah.docx"),
+        ("article-05", "Paul Salmona",
+         "Une note de bas de page dans le « Malet et Isaac » — Invisibilité des Juifs dans l'histoire de France",
+         D / "Paul Salmona. Une note de bas de page.docx"),
+        ("article-06", "Lola Lafon",
+         "L'ineffaçable — Sur l'invisibilisation d'Anne Frank : entretien avec Brigitte Stora",
+         D / "Lola Lafon. L'ineffaçable. Entretien Avec Brigitte Stora.docx"),
+        ("article-07", "Evelyn Torton Beck",
+         "La politique d'invisibilisation des femmes juives dans le féminisme américain",
+         D / "Evelyn Torton Beck. Invisibillité..docx"),
+        ("article-08", "Emmanuel Levine",
+         "Levinas et les formes de l'invisibilité juive",
+         find_docx(D, "Emmanuel Levine")),
+        ("article-09", "Rivon Krygier",
+         "Visibilités juives — entretien avec Philippe Zard",
+         D / "Ryvon Krygier. Visibilités juives. Entretien avec Philippe Zard.docx"),
+        ("article-10", "Léa Veinstein",
+         "Un regard sans paupière — L'invisible chez Kafka",
+         D / "Léa Veinstein. Un regard sans paupière.L'invisible chez Kafka.docx"),
+        ("article-11", "Cécile Rousselet",
+         "L'invisibilité de l'esclave et du Juif chez André Schwarz-Bart",
+         D / "Cécile Rousselet. Schwarz-Bart - Maryse Condé.docx"),
+        ("article-12", "Anny Dayan Rosenman",
+         "Judéités gariennes",
+         A / " Anny Judéités gariennes 10 CORR IZIO.docx"),
+        ("article-13", "Itzhak Goldberg",
+         "On n'y voit rien — L'invisible abstrait : Kandinsky et les autres",
+         D / "Itzhak Goldberg. Invisible.  2023.docx"),
+        ("article-14", "Céline Masson",
+         "Retrouver le nom caché",
+         D / "Céline Masson. Retrouver le nom caché.docx"),
+        ("article-15", "Nadine Vasseur",
+         "Changement de nom",
+         D / "Nadine Vasseur. Changement de nom..docx"),
+        ("article-16", "Carole Ksiazenicer-Matheron",
+         "Un questionnaire au temps de Vichy — Juifs visibles, juifs invisibles : une histoire de famille",
+         D / "Carole Matheron. Un questionnaire au temps deVichy..docx"),
+        ("article-17", "Jean-Charles Szurek",
+         "Romuald Jakub Weksler-Waszkinel",
+         D / "J.C. Szurek. Romuald Jakub Weksler-Waszkinel..docx"),
+        ("article-18", "Simon Wuhl",
+         "Universalisme juif et singularité",
+         D / "Simon Wuhl. Universalisme juif et singularité .docx"),
+        ("article-19", "Philippe Vellila",
+         "Israël en crise",
+         D / "Philippe Vellila. Israël en crise. .docx"),
+    ]
+
+    articles24 = []
+    for idx, (slug, author, title, docx_path) in enumerate(PL24_ARTICLES_LIST):
+        if not docx_path.exists():
+            print(f"    ⚠ Missing: {docx_path.name}")
+            continue
+        raw_paras = extract_docx_text(docx_path)
+        body_html = docx_paras_to_html(raw_paras)
+        prev_slug = PL24_ARTICLES_LIST[idx - 1][0] if idx > 0 else ""
+        next_slug = PL24_ARTICLES_LIST[idx + 1][0] if idx < len(PL24_ARTICLES_LIST) - 1 else ""
+        art_html = generate_article_page(
+            24, ISSUES[24], title, author,
+            body_html,
+            f"{prev_slug}.html" if prev_slug else "",
+            f"{next_slug}.html" if next_slug else "",
+        )
+        (articles24_out / f"{slug}.html").write_text(art_html, encoding="utf-8")
+        articles24.append((slug, author, title))
+
+    ISSUES[24]['articles'] = [(a, t) for _, a, t in articles24]
+    articles24_list_html = f'<p class="article-list__section-header">Articles à lire en ligne ({len(articles24)})</p>\n'
+    articles24_list_html += '<ul class="article-list">\n'
+    for j, (slug, author, title) in enumerate(articles24):
+        articles24_list_html += f"""<li class="article-list__item">
+    <a href="articles/{slug}.html" class="article-list__link">
       <span class="article-list__num">{j+1}</span>
       <div class="article-list__info">
         <div class="article-list__title">{escape_html(title)}</div>
         <div class="article-list__author">{escape_html(author)}</div>
       </div>
-    </div>
+      <span class="article-list__arrow">→</span>
+    </a>
   </li>\n"""
-    articles24_html += '</ul>'
-    issue24_html = generate_issue_page(24, info24, articles24_html, PDF_FILES.get(24))
+    articles24_list_html += '</ul>'
+
+    issue24_html = generate_issue_page(24, ISSUES[24], articles24_list_html, PDF_FILES.get(24))
     (issue24_out / "index.html").write_text(issue24_html, encoding="utf-8")
 
     # Issues index page
