@@ -486,8 +486,12 @@ def text_to_paragraphs(text):
                     current_words = []
             continue
 
-        # Skip isolated digits (page numbers that slipped through)
-        if re.match(r'^\d{1,4}$', stripped):
+        # 2-4 digit isolated numbers are page numbers → skip
+        if re.match(r'^\d{2,4}$', stripped):
+            continue
+        # Single isolated digit (1-9): potential footnote marker → preserve as token
+        if re.match(r'^\d$', stripped):
+            current_words.append(f'\x01{stripped}\x02')
             continue
         # Skip any remaining journal-name fragments
         if re.match(r'Plurielles\s+n[°o]?\s*\d', stripped, re.I):
@@ -496,12 +500,15 @@ def text_to_paragraphs(text):
         # Decide whether this line starts a new paragraph:
         # A new paragraph starts when the PREVIOUS line ended with sentence-ending
         # punctuation AND the current line starts with a capital or special char.
+        # Skip over footnote tokens to find the actual last meaningful word.
         starts_new = False
         if current_words:
-            last = current_words[-1]
-            # Previous material ended the sentence
-            if last and last[-1] in '.!?:':
-                # Current line starts with uppercase or is a speaker label
+            actual_last = ''
+            for w in reversed(current_words):
+                if not (w.startswith('\x01') and w.endswith('\x02')):
+                    actual_last = w
+                    break
+            if actual_last and actual_last[-1] in '.!?:':
                 if stripped and (stripped[0].isupper() or
                                  re.match(r'^[A-ZÀ-Ö]\.?\s', stripped)):
                     starts_new = True
@@ -521,13 +528,143 @@ def text_to_paragraphs(text):
     return paragraphs
 
 
+# ── Footnote token regex (matches \x01N\x02 markers inserted by text_to_paragraphs)
+_FN_TOK = re.compile(r'\x01(\d{1,2})\x02')
+# Paragraph that IS a footnote block: "N Some text..." (no dot after number = not section heading)
+# Limit to footnote numbers ≤ 25 to avoid false positives with page numbers
+_FN_PARA = re.compile(r'^([1-9]|1\d|2[0-5])(?!\s*[.:])\s+(?=[A-ZÀ-Û«\"\'])')
+# Embedded footnote after sentence-ending punctuation or hyphen: "...word. 2 Footnote..."
+# Require punctuation before the number to avoid "chapitre 3 La méthode" false positives
+_FN_EMBED = re.compile(
+    r'(?<=[.!?»,;\'\"\)\-])\s+([1-9]|1\d|2[0-5])\s+(?=[A-ZÀ-Û«\"\'])'
+)
+# Inline footnote ref in body: word-char immediately followed by single digit
+_FN_REF = re.compile(r'(?<=[a-zA-ZàâäéèêëîïôùûüœÀ-ÿ])([1-9])(?=[\s,;.!?»\'\")\]]|$)')
+
+
+def _split_fn_block(text):
+    """Parse a string of one or more footnotes into {num: text} dict."""
+    # Split at boundaries like "...sentence end. 2 Next footnote"
+    parts = re.split(r'(?<=[.!?»\'\")\]])\s+(?=\d{1,2}\s+[A-ZÀ-Û«\"\'])', text)
+    result = {}
+    for part in parts:
+        m = re.match(r'^(\d{1,2})\s+(.+)', part, re.DOTALL)
+        if m:
+            result[int(m.group(1))] = m.group(2).strip()
+    return result
+
+
+def detect_footnotes(paragraphs):
+    """
+    Scan paragraphs for footnote text and inline markers.
+    Returns (body_paragraphs, footnotes_dict) where body_paragraphs still contain
+    \x01N\x02 tokens at reference positions, and footnotes_dict maps int→str.
+    """
+    body = []
+    footnotes = {}
+
+    for para in paragraphs:
+        # Case 1: whole paragraph is footnote text
+        if _FN_PARA.match(para) and len(para) > 25:
+            footnotes.update(_split_fn_block(para))
+            continue
+
+        # Case 2: paragraph contains \x01N\x02 tokens from isolated digit lines
+        if _FN_TOK.search(para):
+            # Walk through chunks: [text, fn_num, text, fn_num, text, ...]
+            chunks = _FN_TOK.split(para)
+            body_buf = chunks[0]
+            i = 1
+            while i < len(chunks):
+                fn_num = int(chunks[i])
+                after = chunks[i + 1] if i + 1 < len(chunks) else ''
+                after_stripped = after.lstrip()
+                # Is what follows footnote text (starts with capital) or body continuation?
+                if after_stripped and after_stripped[0].isupper() and len(after_stripped) > 20:
+                    # Footnote starts here — save body up to this point with ref marker
+                    body_buf = body_buf.rstrip() + f'\x01{fn_num}\x02'
+                    # Parse footnote text (may contain further tokens/footnotes)
+                    fn_raw = str(fn_num) + ' ' + after_stripped
+                    footnotes.update(_split_fn_block(fn_raw))
+                    body_buf_remaining = ''
+                    i += 2
+                    # Absorb any remaining chunks as more footnote text
+                    while i < len(chunks):
+                        fn_num2 = int(chunks[i])
+                        after2 = chunks[i + 1] if i + 1 < len(chunks) else ''
+                        after2s = after2.lstrip()
+                        fn_raw2 = str(fn_num2) + ' ' + after2s
+                        footnotes.update(_split_fn_block(fn_raw2))
+                        i += 2
+                    break
+                else:
+                    # Inline reference only — keep token in body text
+                    body_buf += f'\x01{fn_num}\x02' + after
+                    i += 2
+
+            if body_buf.strip():
+                body.append(body_buf.strip())
+            continue
+
+        # Case 3: embedded footnote text with no token (number ran together with prev line)
+        m = _FN_EMBED.search(para)
+        if m:
+            body_part = para[:m.start()].strip()
+            fn_num_str = m.group(1)
+            fn_part = para[m.start():].strip()  # "N Footnote text..."
+            if body_part:
+                body.append(body_part)
+            if fn_part:
+                footnotes.update(_split_fn_block(fn_part))
+            continue
+
+        body.append(para)
+
+    return body, footnotes
+
+
 def paragraphs_to_html(paragraphs):
-    """Convert list of paragraphs to HTML."""
-    html_parts = []
-    for p in paragraphs:
-        if p:
-            escaped = p.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
-            html_parts.append(f'<p>{escaped}</p>')
+    """Convert list of paragraphs to HTML, extracting and linking footnotes."""
+    body_paras, footnotes = detect_footnotes(paragraphs)
+
+    # Track which ref IDs have been used (first occurrence gets the anchor, rest are plain links)
+    used_ref_ids = set()
+
+    def make_sup(n):
+        ref_id = f'ref-{n}'
+        id_attr = f' id="{ref_id}"' if ref_id not in used_ref_ids else ''
+        used_ref_ids.add(ref_id)
+        return f'<sup class="fn-ref"{id_attr}><a href="#fn-{n}">{n}</a></sup>'
+
+    def render_para(p):
+        # Escape HTML first (tokens are not HTML-special chars)
+        p = p.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+        # Replace \x01N\x02 tokens with <sup> links
+        p = _FN_TOK.sub(lambda m: make_sup(int(m.group(1))), p)
+        # Also catch inline refs (digit attached to word) for known footnotes
+        def sub_ref(m):
+            n = int(m.group(1))
+            if n in footnotes:
+                return make_sup(n)
+            return m.group(0)
+        p = _FN_REF.sub(sub_ref, p)
+        return f'<p>{p}</p>'
+
+    html_parts = [render_para(p) for p in body_paras if p]
+
+    if footnotes:
+        html_parts.append('<hr class="fn-rule">')
+        html_parts.append('<ol class="footnotes">')
+        for n in sorted(footnotes.keys()):
+            text = (footnotes[n]
+                    .replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;'))
+            html_parts.append(
+                f'<li id="fn-{n}" class="footnote">'
+                f'<a href="#ref-{n}" class="fn-back" title="Retour au texte">↩</a> '
+                f'{text}</li>'
+            )
+        html_parts.append('</ol>')
+
     return '\n'.join(html_parts)
 
 
@@ -1123,7 +1260,22 @@ div.article-list__link .article-list__author {
   line-height: 1.75;
 }
 
-.about-content a { color: var(--clr-primary); }
+.about-content a:not(.btn) { color: var(--clr-primary); }
+
+/* ── Footnotes ───────────────────────────────────────────────────────────────── */
+sup.fn-ref { font-size: 0.7em; line-height: 1; vertical-align: super; }
+sup.fn-ref a { color: var(--clr-primary); text-decoration: none; font-weight: 600; }
+sup.fn-ref a:hover { text-decoration: underline; }
+hr.fn-rule { border: none; border-top: 1px solid var(--clr-border); margin: 3rem 0 1.5rem; }
+.footnotes {
+  font-size: 0.83rem;
+  color: var(--clr-muted);
+  padding-left: 1.5rem;
+  line-height: 1.65;
+}
+.footnotes li { margin-bottom: 0.75rem; }
+a.fn-back { color: var(--clr-muted); text-decoration: none; margin-right: 0.4em; }
+a.fn-back:hover { color: var(--clr-primary); }
 
 /* ── Breadcrumb ──────────────────────────────────────────────────────────────── */
 .breadcrumb {

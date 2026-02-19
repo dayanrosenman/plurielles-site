@@ -567,7 +567,22 @@ div.article-list__link .article-list__author {
   line-height: 1.75;
 }
 
-.about-content a { color: var(--clr-primary); }
+.about-content a:not(.btn) { color: var(--clr-primary); }
+
+/* ── Footnotes ───────────────────────────────────────────────────────────────── */
+sup.fn-ref { font-size: 0.7em; line-height: 1; vertical-align: super; }
+sup.fn-ref a { color: var(--clr-primary); text-decoration: none; font-weight: 600; }
+sup.fn-ref a:hover { text-decoration: underline; }
+hr.fn-rule { border: none; border-top: 1px solid var(--clr-border); margin: 3rem 0 1.5rem; }
+.footnotes {
+  font-size: 0.83rem;
+  color: var(--clr-muted);
+  padding-left: 1.5rem;
+  line-height: 1.65;
+}
+.footnotes li { margin-bottom: 0.75rem; }
+a.fn-back { color: var(--clr-muted); text-decoration: none; margin-right: 0.4em; }
+a.fn-back:hover { color: var(--clr-primary); }
 
 /* ── Breadcrumb ──────────────────────────────────────────────────────────────── */
 .breadcrumb {
