@@ -802,9 +802,22 @@ body {
 
 .site-logo {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.85rem;
   padding: 1rem 0;
   text-decoration: none;
+}
+
+.site-logo__icon {
+  color: var(--clr-accent);
+  flex-shrink: 0;
+  opacity: 0.92;
+}
+
+.site-logo__text {
+  display: flex;
+  flex-direction: column;
 }
 
 .site-logo__name {
@@ -1463,6 +1476,7 @@ a.fn-back:hover { color: var(--clr-primary); }
 
 @media (max-width: 480px) {
   .site-logo__name { font-size: 1.3rem; }
+  .site-logo__icon { width: 26px; height: 32px; }
   .btn--outline { margin-left: 0; margin-top: 0.5rem; }
   .issue-header__actions { flex-direction: column; align-items: flex-start; }
 }
@@ -1504,8 +1518,33 @@ def html_page(title, content, depth=0, active_nav=""):
 <header class="site-header">
   <div class="site-header__inner">
     <a href="{prefix}index.html" class="site-logo">
-      <span class="site-logo__name">Plurielles</span>
-      <span class="site-logo__subtitle">Revue de culture juive laïque</span>
+      <svg class="site-logo__icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 62" width="34" height="42" aria-hidden="true" fill="currentColor">
+        <!-- Base -->
+        <rect x="6" y="56" width="38" height="5" rx="2.5"/>
+        <rect x="18" y="50" width="14" height="7" rx="1.5"/>
+        <!-- Central stem -->
+        <rect x="22.5" y="10" width="5" height="42" rx="2.5"/>
+        <!-- Left arms (quadratic bezier: goes sideways then curves up) -->
+        <path d="M22.5,38 Q4,38 4,12" stroke="currentColor" stroke-width="3.2" fill="none" stroke-linecap="round"/>
+        <path d="M22.5,33 Q13,33 13,12" stroke="currentColor" stroke-width="3.2" fill="none" stroke-linecap="round"/>
+        <path d="M22.5,28 Q19,28 19,12" stroke="currentColor" stroke-width="3.2" fill="none" stroke-linecap="round"/>
+        <!-- Right arms -->
+        <path d="M27.5,28 Q31,28 31,12" stroke="currentColor" stroke-width="3.2" fill="none" stroke-linecap="round"/>
+        <path d="M27.5,33 Q37,33 37,12" stroke="currentColor" stroke-width="3.2" fill="none" stroke-linecap="round"/>
+        <path d="M27.5,38 Q46,38 46,12" stroke="currentColor" stroke-width="3.2" fill="none" stroke-linecap="round"/>
+        <!-- Flames (7) -->
+        <ellipse cx="4"  cy="8" rx="2.8" ry="3.8"/>
+        <ellipse cx="13" cy="8" rx="2.8" ry="3.8"/>
+        <ellipse cx="19" cy="8" rx="2.8" ry="3.8"/>
+        <ellipse cx="25" cy="8" rx="2.8" ry="3.8"/>
+        <ellipse cx="31" cy="8" rx="2.8" ry="3.8"/>
+        <ellipse cx="37" cy="8" rx="2.8" ry="3.8"/>
+        <ellipse cx="46" cy="8" rx="2.8" ry="3.8"/>
+      </svg>
+      <span class="site-logo__text">
+        <span class="site-logo__name">Plurielles</span>
+        <span class="site-logo__subtitle">Revue de culture juive laïque</span>
+      </span>
     </a>
     <nav class="site-nav">
       {nav_html}
