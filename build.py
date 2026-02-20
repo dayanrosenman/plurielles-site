@@ -386,7 +386,7 @@ ISSUES = {
         "dossier": "Juif visible / Juif invisible",
         "articles": [
             ("Izio Rosenman", "Éditorial"),
-            ("Livia Parness", "Le sens (impré)visible de l'invisible : le cas du marranisme portugais"),
+            ("Livia Parnes", "Le sens (impré)visible de l'invisible : le cas du marranisme portugais"),
             ("Chantal Meyer-Plantureux", "Le Juif au théâtre au XIXe s. La Belle époque de l'antisémitisme"),
             ("Sylvie Lindeperg", "Vie et destin des « images de la Shoah »"),
             ("Paul Salmona", "Invisibilité des Juifs dans l'histoire de France"),
@@ -396,14 +396,23 @@ ISSUES = {
             ("Rivon Krygier", "Visibilités juives : entretien avec Philippe Zard"),
             ("Léa Veinstein", "Un regard sans paupière. L'invisibilité chez Kafka"),
             ("Cécile Rousselet", "L'invisibilité de l'esclave et du Juif chez André Schwarz-Bart"),
-            ("Anny Dayan Rosenman", "Romain Gary. Une judéité affichée et voilée"),
+            ("Anny Dayan Rosenman", "Judéités gariennes"),
             ("Itzhak Goldberg", "On n'y voit rien – L'invisible abstrait : Kandinsky et les autres"),
             ("Céline Masson", "Retrouver le nom caché"),
             ("Nadine Vasseur", "Changement de nom"),
             ("Carole Ksiazenicer-Matheron", "Un questionnaire au temps de Vichy. Juifs visibles, juifs invisibles : une histoire de famille"),
             ("Jean-Charles Szurek", "Romuald Jakub Weksler-Waszkinel"),
             ("Simon Wuhl", "Universalisme juif et singularité"),
-            ("Philippe Velila", "Israël en crise"),
+            ("Philippe Vellila", "Israël en crise"),
+        ],
+        # Sections from official sommaire: (header or None, slice indices)
+        "sections": [
+            (None,                      (0, 1)),   # Éditorial
+            ("Histoire",                (1, 6)),   # Parnes, Meyer-Plantureux, Lindeperg, Salmona, Lafon
+            ("Philosophie et actualité",(6, 9)),   # Beck, Levine, Krygier
+            ("Littérature et art",      (9, 13)),  # Veinstein, Rousselet, Dayan Rosenman, Goldberg
+            ("Témoignages",             (13, 17)), # Masson, Vasseur, Ksiazenicer-Matheron, Szurek
+            ("Hors dossier",            (17, 19)), # Wuhl, Vellila
         ],
     },
 }
@@ -439,8 +448,8 @@ def extract_pdf_text(pdf_path):
         for page in doc:
             ph = page.rect.height
             pw = page.rect.width
-            # Clip away the top 9% (running headers) and bottom 14% (footers/page numbers)
-            clip = fitz.Rect(0, ph * 0.09, pw, ph * 0.86)
+            # Clip away the top 11% (running headers) and bottom 14% (footers/page numbers)
+            clip = fitz.Rect(0, ph * 0.11, pw, ph * 0.86)
             text = page.get_text("text", clip=clip)
             # Fix typographic ligatures → plain letters
             text = (text
@@ -454,6 +463,13 @@ def extract_pdf_text(pdf_path):
             )
             # Fix soft hyphenation: word- + newline + lowercase → join
             text = re.sub(r'-\n([a-zàâäéèêëîïôùûüœ])', r'\1', text)
+            # Fix character-spaced words (PDF artifact where each letter is a separate object)
+            # e.g. "i n c a r n e" → "incarne", "m a t e rn e l l e" → "maternelle"
+            text = re.sub(
+                r'(?<!\S)([A-Za-zÀ-ÿ]{1,3})( [A-Za-zÀ-ÿ]{1,3}){3,}',
+                lambda m: m.group(0).replace(' ', ''),
+                text
+            )
             pages.append(text)
         doc.close()
         return pages
@@ -533,9 +549,15 @@ def text_to_paragraphs(text):
         if re.match(r'^\d$', stripped):
             current_words.append(f'\x01{stripped}\x02')
             continue
-        # Skip any remaining journal-name fragments
-        if re.match(r'Plurielles\s+n[°o]?\s*\d', stripped, re.I):
+        # Skip running header fragments (journal name + issue number anywhere in line)
+        if re.search(r'Plurielles\s+(n[°o]?\s*\d|num[eé]ro)', stripped, re.I):
             continue
+        # Skip lines that are just a dossier title + page number (e.g. "Les Juifs dans la modernité 15")
+        if re.match(r'^[A-ZÀ-Ü].{10,60}\s\d{1,3}$', stripped) and len(stripped) < 80:
+            # Only if it looks like a header (short, ends with page number, title case)
+            words = stripped.split()
+            if len(words) <= 8 and words[-1].isdigit():
+                continue
 
         # Decide whether this line starts a new paragraph:
         # A new paragraph starts when the PREVIOUS line ended with sentence-ending
@@ -1255,6 +1277,14 @@ div.article-list__link .article-list__author {
   background: linear-gradient(90deg, var(--clr-primary) 0%, var(--clr-accent) 100%);
 }
 
+.team-card__photo {
+  width: 100%;
+  height: 220px;
+  object-fit: cover;
+  object-position: top center;
+  display: block;
+}
+
 .team-card__body { padding: 1.5rem; }
 
 .team-card__name {
@@ -1695,46 +1725,55 @@ COMMITTEE = [
     {
         "name": "Izio Rosenman",
         "role": "Rédacteur en chef",
+        "photo": "assets/images/comite/izio-rosenman.jpg",
         "bio": "Directeur de recherche au CNRS en physique et psychanalyste, Izio Rosenman est le fondateur et rédacteur en chef de la revue Plurielles. Il a fait du psychodrame psychanalytique au CMPP de l'OSE. Président de l'Association pour un Judaïsme humaniste et laïque (AJHL) et de l'Association pour l'enseignement du Judaïsme comme culture (AEJC), il a organisé les rencontres littéraires Livres des Mondes juifs et Diasporas en dialogue (2008-2016). Il a traduit de l'hébreu La foi athée des Juifs laïques de Yaakov Malkin (éd. El-Ouns, 2002) et a coordonné le numéro de la revue Panoramiques, Juifs laïques. Du religieux vers le culturel (éd. Arléa-Corlet, 2002).",
     },
     {
         "name": "Anny Dayan Rosenman",
         "role": "Membre du comité de rédaction",
+        "photo": "assets/images/comite/anny-dayan-rosenman.jpg",
         "bio": "Maître de conférences de littérature et de cinéma à l'Université Paris-Diderot, Anny Dayan Rosenman travaille sur les écrivains juifs de langue française. Elle a publié notamment : Le survivant un écrivain du XXe siècle (avec Carine Trevisan, Textuel, 2003) ; La guerre d'Algérie dans la mémoire et l'imaginaire (avec Lucette Valensi, éd. Bouchène, 2003) ; Les Alphabets de la Shoah, Survivre, témoigner, écrire (CNRS éditions, 2007 ; poche Biblis, 2013) ; Piotr Rawicz et la solitude du témoin (avec Fransisca Louwagie, éd. Kimé, 2013).",
     },
     {
         "name": "Martine Leibovici",
         "role": "Membre du comité de rédaction",
+        "photo": "assets/images/comite/martine-leibovici.jpg",
         "bio": "Maître de conférences émérite en philosophie à l'Université Paris-Diderot, Martine Leibovici a publié notamment : Hannah Arendt, une Juive. Expérience, politique et histoire (Desclée de Brouwer, 2008) ; Autobiographie de transfuges. Karl-Philipp Moritz, Richard Wright, Assia Djebar (éd. Le Manuscrit, 2013) ; et avec Anne-Marie Roviello, Le pervertissement totalitaire. La banalité du mal selon Hannah Arendt (Kimé, 2017). Elle a récemment coordonné, avec Aurore Mréjen, un Cahier de l'Herne consacré à Hannah Arendt (2021).",
     },
     {
         "name": "Carole Ksiazenicer-Matheron",
         "role": "Membre du comité de rédaction",
+        "photo": "assets/images/comite/carole-ksiazenicer-matheron.jpg",
         "bio": "Maître de conférences en littérature comparée à l'Université Paris 3, Carole Ksiazenicer-Matheron a traduit plusieurs classiques de la littérature yiddish en français, notamment Argile et autres récits d'Israël Joshua Singer et La Danse des démons d'Esther Kreitman. Elle a publié : Les temps de la fin : Roth, Singer, Boulgakov (Honoré Champion, 2006) ; Déplier le temps : Israël Joshua Singer. Un écrivain yiddish dans l'histoire (Classiques Garnier, 2012) ; Le Sacrifice de la beauté (Éditions Sorbonne Nouvelle, 2000).",
     },
     {
         "name": "Jean-Charles Szurek",
         "role": "Membre du comité de rédaction",
+        "photo": "assets/images/comite/jean-charles-szurek.webp",
         "bio": "Directeur de recherche émérite au CNRS, Jean-Charles Szurek est spécialiste des questions judéo-polonaises et de la mémoire de la Shoah en Pologne. Il a notamment publié La Pologne, les Juifs et le communisme (Michel Houdiard éd., 2012) et codirigé Les Polonais et la Shoah. Une nouvelle école historique (CNRS éditions, 2019).",
     },
     {
         "name": "Philippe Zard",
         "role": "Membre du comité de rédaction",
+        "photo": "assets/images/comite/philippe-zard.jpg",
         "bio": "Professeur de littérature comparée à l'Université Paris-Nanterre, Philippe Zard mène des recherches sur l'imaginaire politique et religieux dans la littérature européenne. Il a publié notamment La Fiction de l'Occident. Thomas Mann, Franz Kafka, Albert Cohen (PUF, 1999) et De Shylock à Cinoc. Essai sur les judaïsmes apocryphes (Garnier, 2018). Il a assuré l'édition critique de la tétralogie romanesque d'Albert Cohen : Solal et les Solal, aux éditions Gallimard (collection Quarto, 2018).",
     },
     {
         "name": "Brigitte Stora",
         "role": "Membre du comité de rédaction",
+        "photo": "assets/images/comite/brigitte-stora.jpg",
         "bio": "Journaliste, Brigitte Stora est auteure de documentaires et de fictions radiophoniques pour France Culture et France Inter. Sociologue de formation, elle a soutenu en 2021 à l'Université Denis-Diderot-Paris 7 une thèse intitulée : L'antisémitisme : un meurtre du sujet et un barrage à l'émancipation ? Elle a publié un essai : Que sont mes amis devenus : les juifs, Charlie puis tous les nôtres (éd. Le Bord de L'eau, 2016).",
     },
     {
         "name": "Simon Wuhl",
         "role": "Membre du comité de rédaction",
+        "photo": "assets/images/comite/simon-wuhl.jpg",
         "bio": "Sociologue et universitaire spécialisé dans la sociologie du travail et la sociologie politique, Simon Wuhl a été professeur associé à l'université de Marne-la-Vallée et au CNAM. Il a publié plusieurs ouvrages sur les questions de justice sociale, notamment L'Égalité. Nouveaux débats (PUF, 2002) et Discrimination positive et justice sociale (PUF, 2007). Il est également auteur de plusieurs livres sur le judaïsme, notamment Michael Walzer et l'empreinte du judaïsme (Le Bord de l'eau, 2017).",
     },
     {
         "name": "Nadine Vasseur",
         "role": "Membre du comité de rédaction",
+        "photo": "assets/images/comite/nadine-vasseur.png",
         "bio": "Longtemps productrice à France Culture, Nadine Vasseur est l'auteure d'une dizaine de livres, parmi lesquels Simone Veil, vie publique archives privées (Tohu-Bohu, 2019), Je ne lui ai pas dit que j'écrivais ce livre (Liana Levi, 2008) et 36 rue du Caire, une histoire de la confection (Librairie Petite Égypte, 2019). Elle dirige depuis 2014 le festival Vino Voce de Saint-Émilion.",
     },
     {
@@ -1758,9 +1797,14 @@ COMMITTEE = [
 def generate_comite_page():
     cards = ""
     for member in COMMITTEE:
+        photo = member.get('photo', '')
+        if photo:
+            photo_html = f'<img src="{photo}" alt="{member["name"]}" class="team-card__photo">'
+        else:
+            photo_html = '<div class="team-card__avatar"></div>'
         cards += f"""
     <div class="team-card">
-      <div class="team-card__avatar"></div>
+      {photo_html}
       <div class="team-card__body">
         <h3 class="team-card__name">{member['name']}</h3>
         <p class="team-card__role">{member['role']}</p>
@@ -1881,7 +1925,8 @@ def build():
 
         if issue_dir.exists():
             pdfs = sorted(p for p in issue_dir.iterdir() if p.suffix.lower() == '.pdf')
-            pdf_articles = []
+            pdf_articles = []   # articles shown in sommaire (have known metadata)
+            known_articles = info.get('articles', [])
 
             for i, pdf in enumerate(pdfs):
                 pages = extract_pdf_text(pdf)
@@ -1889,38 +1934,26 @@ def build():
                     continue
                 full_text = '\n\n'.join(pages)
                 paragraphs = text_to_paragraphs(full_text)
+                body_html = paragraphs_to_html(paragraphs)
 
-                # Try to extract title from first few paragraphs
-                title_candidate = ""
-                author_candidate = ""
-                for p in paragraphs[:8]:
-                    p_clean = p.strip()
-                    # Skip issue headers, page numbers, and running headers
-                    if re.match(r'^Plurielles\s*(n[°u]|num)', p_clean, re.I):
-                        continue
-                    if re.match(r'^\d+\s*$', p_clean):
-                        continue
-                    if re.match(r'^Plurielles\s+num', p_clean, re.I):
-                        continue
-                    # Skip very short lines (likely page headers)
-                    if len(p_clean) < 6:
-                        continue
-                    if len(p_clean) > 10 and not title_candidate:
-                        title_candidate = p_clean[:120]
-                    elif len(p_clean) > 5 and not author_candidate and title_candidate:
-                        author_candidate = p_clean[:80]
-                        break
-
-                if not title_candidate:
-                    title_candidate = f"Article {i+1}"
+                # Use authoritative metadata from ISSUES dict when available
+                if i < len(known_articles):
+                    known_author, known_title = known_articles[i]
+                    title_candidate = known_title
+                    author_candidate = known_author
+                    include_in_sommaire = True
+                else:
+                    # Extra PDFs (editorial, intros, reviews beyond known articles):
+                    # still generate the article page but don't list in sommaire
+                    title_candidate = f"Document supplémentaire {i - len(known_articles) + 1}"
+                    author_candidate = ""
+                    include_in_sommaire = False
 
                 # Generate slug from PDF filename
                 slug = pdf.stem.replace(' ', '-').lower()
                 article_file = f"{slug}.html"
 
-                body_html = paragraphs_to_html(paragraphs)
-
-                # Determine prev/next
+                # Determine prev/next among sommaire-listed articles only
                 prev_link = f"{pdfs[i-1].stem.replace(' ', '-').lower()}.html" if i > 0 else ""
                 next_link = f"{pdfs[i+1].stem.replace(' ', '-').lower()}.html" if i < len(pdfs)-1 else ""
 
@@ -1932,12 +1965,13 @@ def build():
                     prev_link, next_link
                 )
                 (articles_out / article_file).write_text(art_html, encoding="utf-8")
-                pdf_articles.append((slug, title_candidate, author_candidate))
 
-            # Generate issue index: clickable articles first, then reference sommaire
+                if include_in_sommaire:
+                    pdf_articles.append((slug, title_candidate, author_candidate))
+
+            # Generate issue index: clean sommaire using known ISSUES metadata
             articles_html = ""
 
-            # Clickable articles (extracted from page-range PDFs)
             if pdf_articles:
                 articles_html += f'<p class="article-list__section-header">Articles à lire en ligne ({len(pdf_articles)})</p>\n'
                 articles_html += '<ul class="article-list">\n'
@@ -1951,22 +1985,6 @@ def build():
       </div>
       <span class="article-list__arrow">→</span>
     </a>
-  </li>\n"""
-                articles_html += '</ul>\n'
-
-            # Non-clickable sommaire (reference only, visually subdued)
-            if info.get('articles'):
-                articles_html += f'<p class="article-list__section-header" style="margin-top:2rem">Index des articles du numéro</p>\n'
-                articles_html += '<ul class="article-list">\n'
-                for j, (author, title) in enumerate(info['articles']):
-                    articles_html += f"""<li class="article-list__item">
-    <div class="article-list__link">
-      <span class="article-list__num">{j+1}</span>
-      <div class="article-list__info">
-        <div class="article-list__title">{escape_html(title)}</div>
-        <div class="article-list__author">{escape_html(author)}</div>
-      </div>
-    </div>
   </li>\n"""
                 articles_html += '</ul>\n'
 
@@ -2224,12 +2242,26 @@ def build():
         articles24.append((slug, author, title))
 
     ISSUES[24]['articles'] = [(a, t) for _, a, t in articles24]
+
+    # Build a slug→index map for section rendering
+    slug_to_idx = {slug: idx for idx, (slug, _, _) in enumerate(articles24)}
+
     articles24_list_html = f'<p class="article-list__section-header">Articles à lire en ligne ({len(articles24)})</p>\n'
-    articles24_list_html += '<ul class="article-list">\n'
-    for j, (slug, author, title) in enumerate(articles24):
-        articles24_list_html += f"""<li class="article-list__item">
+
+    sections24 = ISSUES[24].get('sections', [(None, (0, len(articles24)))])
+    art_counter = 0
+    for section_name, (start, end) in sections24:
+        if section_name:
+            articles24_list_html += f'<p class="article-list__section-header" style="margin-top:1.5rem">{escape_html(section_name)}</p>\n'
+        articles24_list_html += '<ul class="article-list">\n'
+        for j in range(start, end):
+            if j >= len(articles24):
+                break
+            slug, author, title = articles24[j]
+            art_counter += 1
+            articles24_list_html += f"""<li class="article-list__item">
     <a href="articles/{slug}.html" class="article-list__link">
-      <span class="article-list__num">{j+1}</span>
+      <span class="article-list__num">{art_counter}</span>
       <div class="article-list__info">
         <div class="article-list__title">{escape_html(title)}</div>
         <div class="article-list__author">{escape_html(author)}</div>
@@ -2237,7 +2269,7 @@ def build():
       <span class="article-list__arrow">→</span>
     </a>
   </li>\n"""
-    articles24_list_html += '</ul>'
+        articles24_list_html += '</ul>\n'
 
     issue24_html = generate_issue_page(24, ISSUES[24], articles24_list_html, PDF_FILES.get(24))
     (issue24_out / "index.html").write_text(issue24_html, encoding="utf-8")
