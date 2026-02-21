@@ -317,14 +317,32 @@ ISSUES = {
         "year": "2015",
         "dossier": "Intellectuels juifs",
         "articles": [
-            ("Izio Rosenman", "Rabi, un intellectuel engagé"),
-            ("Charles Malamud", "Pierre Vidal-Naquet"),
-            ("Sandrine Szwarc", "Les colloques des intellectuels juifs"),
-            ("Jean-Charles Szurek", "Enzo Traverso et Alain Finkielkraut, intellectuels nostalgiques"),
-            ("Martine Leibovici", "Hannah Arendt, ni Juive d'exception, ni femme d'exception"),
-            ("Daniel Oppenheim", "L'expérience de la barbarie par l'intellectuel et l'éthique du témoignage selon Jean Améry"),
-            ("Michaël Löwy", "De quelques intellectuels juifs radicaux aux USA et en Europe"),
-            ("Rachel Ertel", "Khurbn : l'homme chaos"),
+            # Order matches Python string-sort of PDF filenames (pl19-NNN-NNN.pdf)
+            ("Pierre Pachet", "Intellectuels juifs soviétiques"),                                                  # pl19-109-110
+            ("Boris Czerny", "Une identité de papier : être juif en URSS"),                                        # pl19-111-123
+            ("Jean-Yves Potel", "Un intellectuel juif en Pologne — entretien avec Konstanty Gebert"),              # pl19-124-133
+            ("Constance Paris de Bollardière", "La collection Dos poylishe yidntum (1946-1966)"),                  # pl19-134-139
+            ("Fleur Kuhn Kennedy", "Mark Turkov et sa « communauté imaginée »"),                                   # pl19-140-150
+            ("Charles Malamud", "Pierre Vidal-Naquet"),                                                            # pl19-15-16
+            ("Dominique Bourel", "Martin Buber et la politique"),                                                   # pl19-151-156
+            ("Denis Charbit", "Avraham B. Yehoshua — un penseur sur la corde raide"),                             # pl19-157-166
+            ("Philippe Zard", "Meddeb le sage : l'honneur d'un intellectuel"),                                     # pl19-169-179
+            ("Richard Marienstras", "Moïse et l'Égyptien"),                                                        # pl19-17-19
+            ("Daniella Pinkstein", "Le temps des miens — de Moriah à Budapest"),                                   # pl19-180-187
+            ("Philippe Velilla", "En attendant Marine Le Pen"),                                                    # pl19-188-193
+            ("Rachel Ertel", "Khurbn : l'homme chaos"),                                                            # pl19-194-197
+            ("Marie-Brunette Spire", "André Spire (1868-1966)"),                                                   # pl19-20-24
+            ("Antoine Coppolani", "Albert Cohen et la Revue Juive"),                                               # pl19-25-34
+            ("Sandrine Szwarc", "Les colloques des intellectuels juifs"),                                          # pl19-35-41
+            ("Héloïse Hermant", "Refus des Lumières : les penseurs du retour"),                                    # pl19-42-51
+            ("Izio Rosenman", "Éditorial — Intellectuels juifs"),                                                  # pl19-5-6
+            ("Jean-Claude Poizat", "Les intellectuels juifs français contemporains et l'ambivalence"),             # pl19-52-64
+            ("Jean-Charles Szurek", "Enzo Traverso et Alain Finkielkraut, intellectuels nostalgiques"),            # pl19-65-71
+            ("Izio Rosenman", "Rabi, un intellectuel juif engagé"),                                                # pl19-7-14
+            ("Carole Matheron", "Abe Cahan (1860-1951) : un intellectuel juif dans le melting-pot américain"),     # pl19-72-79
+            ("Martine Leibovici", "Hannah Arendt, ni Juive d'exception, ni femme d'exception"),                    # pl19-80-90
+            ("Daniel Oppenheim", "L'expérience de la barbarie par l'intellectuel et l'éthique du témoignage selon Jean Améry"),  # pl19-91-97
+            ("Michaël Löwy", "De quelques intellectuels juifs radicaux aux USA et en Europe"),                     # pl19-98-108
         ],
     },
     20: {
