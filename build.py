@@ -1869,6 +1869,7 @@ COMMITTEE = [
         "name": "Carole Ksiazenicer-Matheron",
         "role": "Membre du comité de rédaction",
         "photo": "assets/images/comite/carole-ksiazenicer-matheron.jpg",
+        "photo_position": "center center",
         "bio": "Maître de conférences en littérature comparée à l'Université Paris 3, Carole Ksiazenicer-Matheron a traduit plusieurs classiques de la littérature yiddish en français, notamment Argile et autres récits d'Israël Joshua Singer et La Danse des démons d'Esther Kreitman. Elle a publié : Les temps de la fin : Roth, Singer, Boulgakov (Honoré Champion, 2006) ; Déplier le temps : Israël Joshua Singer. Un écrivain yiddish dans l'histoire (Classiques Garnier, 2012) ; Le Sacrifice de la beauté (Éditions Sorbonne Nouvelle, 2000).",
     },
     {
@@ -1881,6 +1882,7 @@ COMMITTEE = [
         "name": "Philippe Zard",
         "role": "Membre du comité de rédaction",
         "photo": "assets/images/comite/philippe-zard.jpg",
+        "photo_position": "center center",
         "bio": "Professeur de littérature comparée à l'Université Paris-Nanterre, Philippe Zard mène des recherches sur l'imaginaire politique et religieux dans la littérature européenne. Il a publié notamment La Fiction de l'Occident. Thomas Mann, Franz Kafka, Albert Cohen (PUF, 1999) et De Shylock à Cinoc. Essai sur les judaïsmes apocryphes (Garnier, 2018). Il a assuré l'édition critique de la tétralogie romanesque d'Albert Cohen : Solal et les Solal, aux éditions Gallimard (collection Quarto, 2018).",
     },
     {
@@ -1899,6 +1901,7 @@ COMMITTEE = [
         "name": "Nadine Vasseur",
         "role": "Membre du comité de rédaction",
         "photo": "assets/images/comite/nadine-vasseur.png",
+        "photo_position": "center center",
         "bio": "Longtemps productrice à France Culture, Nadine Vasseur est l'auteure d'une dizaine de livres, parmi lesquels Simone Veil, vie publique archives privées (Tohu-Bohu, 2019), Je ne lui ai pas dit que j'écrivais ce livre (Liana Levi, 2008) et 36 rue du Caire, une histoire de la confection (Librairie Petite Égypte, 2019). Elle dirige depuis 2014 le festival Vino Voce de Saint-Émilion.",
     },
     {
@@ -1924,7 +1927,8 @@ def generate_comite_page():
     for member in COMMITTEE:
         photo = member.get('photo', '')
         if photo:
-            photo_html = f'<img src="{photo}" alt="{member["name"]}" class="team-card__photo">'
+            pos = member.get('photo_position', 'top center')
+            photo_html = f'<img src="{photo}" alt="{member["name"]}" class="team-card__photo" style="object-position:{pos}">'
         else:
             photo_html = '<div class="team-card__avatar"></div>'
         cards += f"""
