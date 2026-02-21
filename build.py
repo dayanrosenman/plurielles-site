@@ -146,17 +146,39 @@ ISSUES = {
         "year": "1998-1999",
         "dossier": "Langues juives de la diaspora",
         "articles": [
-            ("Claude Mossé", "Judaïsme et hellénisme"),
-            ("Jacques Hassoun", "Les Juifs d'Alexandrie et le multiculturalisme"),
-            ("Mireille Hadas-Lebel", "La renaissance de l'hébreu et de la conscience nationale juive"),
-            ("Delphine Bechtel", "La guerre des langues entre l'hébreu et le yiddish"),
-            ("Itzhok Niborski", "Le Yiddish, un passé, un présent et un futur ?"),
-            ("Haïm Vidal-Sephiha", "Langue et littérature judéo-espagnoles"),
-            ("Régine Robin", "La nostalgie du yiddish chez Kafka"),
-            ("Henri Raczymow", "Retrouver la langue perdue. Les mots de ma tribu"),
-            ("Shlomo Ben Ami", "Après les accords de Wye Plantation où va-t-on ?"),
-            ("Dominique Bourel", "Moses Mendelssohn, fondateur d'un judaïsme moderne et ouvert"),
-            ("Anny Dayan Rosenman", "Entendre la voix du témoin"),
+            # Order matches Python string-sort of PDF filenames (pl7-NNN.pdf)
+            ("Henri Raczymow", "Retrouver la langue perdue"),                                                           # pl7-102-106
+            ("Jacques Burko", "Les emprunts au yiddish dans la langue polonaise familiale"),                             # pl7-107-111
+            ("Jacques Hassoun", "Les Juifs d'Alexandrie et le multiculturalisme"),                                       # pl7-11-17
+            ("Marcel Cohen", "Lettres à Antonio Saura"),                                                                 # pl7-112-114
+            ("Marc-Henri Klein", "La Tour de Babel : l'origine des langues"),                                            # pl7-117-121
+            ("Franz Kafka", "Extrait (texte sur le yiddish)"),                                                           # pl7-122
+            ("Rolland Doukhan", "Ma diglossie, au loin, ma disparue…"),                                                 # pl7-123-130
+            ("Haïm Zafrani", "Traditions poétiques et musicales juives au Maroc"),                                      # pl7-131-137
+            ("Albert Memmi", "Document"),                                                                                # pl7-139-141
+            ("M. Zalc", "Expérience vécue au Japon"),                                                                   # pl7-142-143
+            ("Shlomo Ben Ami", "Après les accords de Wye Plantation"),                                                  # pl7-144-149
+            ("Lucie Bollens-Beckouche", "Histoire et mythe du couple"),                                                  # pl7-150-154
+            ("Dominique Bourel", "Moses Mendelssohn, fondateur d'un judaïsme moderne"),                                 # pl7-155-157
+            ("Anny Dayan Rosenman", "Entendre la voix du témoin"),                                                      # pl7-158-164
+            ("Egon Friedler", "L'Intégration des Juifs en Argentine"),                                                  # pl7-165-167
+            ("Michael Löwy", "Romantisme, messianisme et marxisme dans la philosophie de Walter Benjamin"),              # pl7-168-179
+            ("", "D'après l'Encyclopedia Judaïca"),                                                                      # pl7-18-19
+            ("Olivier Revault d'Allonnes", "La loi de quel droit ? A propos d'Arnold Schoenberg"),                      # pl7-180-187
+            ("Nahma Sandrow", "Isaac Gordin, un maskil créateur du théâtre yiddish"),                                   # pl7-188-191
+            ("Berthe Burko-Falcman", "Le chien du train"),                                                              # pl7-192-196
+            ("", "Deux romances judéo-espagnoles"),                                                                      # pl7-197-201
+            ("", "Déclaration du 7e Congrès de la Fédération"),                                                         # pl7-202-205
+            ("Mireille Hadas-Lebel", "La renaissance de l'hébreu"),                                                     # pl7-21-26
+            ("Delphine Bechtel", "La guerre des langues entre l'hébreu et le yiddish"),                                 # pl7-27-47,49
+            ("Izio Rosenman", "Éditorial : Langue, culture et identité"),                                               # pl7-4-5
+            ("Joseph Chetrit", "Les langues juives d'Afrique du Nord"),                                                 # pl7-50-57
+            ("Itzhok Niborski", "Le Yiddish, un passé, un présent et un futur ?"),                                      # pl7-59-71
+            ("Claude Mossé", "Judaïsme et hellénisme"),                                                                 # pl7-7-10
+            ("Haïm-Vidal Sephiha", "Langue et littérature judéo-espagnoles"),                                           # pl7-72-79
+            ("Charles Dobzynski", "Langues juives de diaspora"),                                                         # pl7-80-84
+            ("Régine Robin", "La nostalgie du yiddish chez Kafka"),                                                      # pl7-88-97
+            ("Franz Kafka", "Discours sur la langue yiddish"),                                                           # pl7-99-101
         ],
     },
     8: {
@@ -164,14 +186,36 @@ ISSUES = {
         "year": "2000",
         "dossier": "Les Juifs et l'engagement politique",
         "articles": [
-            ("Hubert Hannoun", "Barukh Spinoza, rebelle politique"),
-            ("Henri Minczeles", "Engagement universaliste et identité nationale : le Bund"),
-            ("Alain Dieckhoff", "Le sionisme : la réussite d'un projet national"),
-            ("Henry Bulawko", "Bernard Lazare, le lutteur"),
-            ("Jean-Charles Szurek", "En Espagne... et ailleurs"),
-            ("Anny Dayan Rosenman", "Albert Cohen, un Valeureux militant"),
-            ("Lucien Lazare", "La résistance juive dans sa spécificité"),
-            ("Gérard Israël", "René Cassin, l'homme des droits de l'homme"),
+            # Order matches Python string-sort of PDF filenames (pl8-NNN.pdf)
+            ("Jacques Burko", "Les Juifs dans les combats pour l'indépendance polonaise au XIXe siècle"),               # pl8-10-22
+            ("Lazare Bitoun", "Juifs et Noirs au miroir de la littérature"),                                             # pl8-103-107
+            ("", "Question à David Grossman"),                                                                           # pl8-108
+            ("Allan Levine", "Un rabbin avec Martin Luther King dans la lutte pour les droits civiques"),                # pl8-110-116
+            ("Eveline Amoursky", "Mandelstam : l'identité assumée"),                                                    # pl8-117-122
+            ("Huguette Ivanier", "Une éthique pour notre temps : Lévinas ou l'humanisme de l'Autre"),                  # pl8-123-127
+            ("Charles Dobzynski", "Dialogue à Jérusalem"),                                                              # pl8-128
+            ("Rachid Aous", "Le Matrouz de Simon Elbaz"),                                                               # pl8-129-132
+            ("Annie Goldmann", "La deuxième guerre mondiale sur les écrans français"),                                   # pl8-133-138
+            ("Rolland Doukhan", "Le fil du temps (Éphémérides)"),                                                       # pl8-140-158
+            ("Henri Minczeles", "Engagement universaliste et identité nationale : le Bund"),                             # pl8-23-27
+            ("Alain Dieckhoff", "Le sionisme : la réussite d'un projet national"),                                      # pl8-28-32
+            ("Henry Bulawko", "Bernard Lazare, le lutteur"),                                                             # pl8-33
+            ("Jean-Jacques Marie", "Les Juifs dans la Révolution russe"),                                               # pl8-34-39
+            ("Izio Rosenman", "Éditorial : Un engagement vers les autres"),                                              # pl8-4-5
+            ("Jean-Charles Szurek", "En Espagne… et ailleurs"),                                                         # pl8-40
+            ("Arno Lustiger", "Les Juifs dans la guerre d'Espagne"),                                                    # pl8-41-46
+            ("", "La France, centre de l'aide internationale à l'Espagne républicaine"),                                 # pl8-47-50
+            ("G. E. Sichon", "Frantisek Kriegel, l'insoumis"),                                                          # pl8-51-59
+            ("Anny Dayan Rosenman", "Albert Cohen, un Valeureux militant"),                                              # pl8-60-61
+            ("Lucien Lazare", "La résistance juive dans sa spécificité"),                                               # pl8-62-65
+            ("Anny Dayan Rosenman", "Des terroristes à la retraite"),                                                   # pl8-66-69
+            ("Hubert Hannoun", "Barukh Spinoza, rebelle politique"),                                                    # pl8-7-9
+            ("Gérard Israël", "René Cassin, l'homme des droits de l'homme"),                                            # pl8-70-71
+            ("Jean-Marc Izrine", "Le Mouvement libertaire juif"),                                                        # pl8-72-77
+            ("Charles Dobzynski", "On ne saurait juger sa vie"),                                                        # pl8-78
+            ("Rolland Doukhan", "Daniel Timsit, entretien"),                                                             # pl8-79-82
+            ("Astrid Starck", "Lionel Rogosin, un cinéaste contre l'apartheid"),                                        # pl8-83-93
+            ("Rolland Doukhan", "Daniel Timsit, Suite baroque"),                                                        # pl8-94-102
         ],
     },
     9: {
@@ -179,13 +223,25 @@ ISSUES = {
         "year": "2001",
         "dossier": "Les Juifs et l'Europe",
         "articles": [
-            ("Daniel Lindenberg", "Europa Judaïca ?"),
-            ("Alain Touraine", "Nous sommes tous des Juifs européens"),
-            ("Michael Löwy", "La culture juive allemande entre assimilation et catastrophe"),
-            ("Diana Pinto", "Vers une identité juive européenne"),
-            ("Henri Minczeles", "Le concept d'extraterritorialité des Juifs en Europe médiane au XXe siècle"),
-            ("Jean-Charles Szurek", "Jedwabne et la mémoire polonaise"),
-            ("Daniel Oppenheim", "Dans l'après-coup de l'événement"),
+            # Order matches Python string-sort of PDF filenames (pl9-NNN.pdf)
+            ("Hugo Samuel", "Poèmes"),                                                                                   # pl9-101-105
+            ("Rolland Doukhan", "L'Autre moitié du vent (extrait)"),                                                    # pl9-107-113
+            ("Eveline Amoursky", "Marina Tsvetaeva – Ossip Mandelstam. Écho"),                                          # pl9-115-121
+            ("Mikael Elbaz", "Paria et rebelle : Abraham Serfaty et le judaïsme marocain"),                             # pl9-122-130
+            ("Rolland Doukhan", "Les rêveries de la femme sauvage (compte rendu)"),                                     # pl9-131
+            ("Yves Plasseraud", "État-nation et minorités en Europe"),                                                   # pl9-18-27
+            ("Alain Touraine", "Nous sommes tous des Juifs européens"),                                                  # pl9-28-31
+            ("Élie Barnavi", "Le Musée de l'Europe à Bruxelles"),                                                       # pl9-32-36
+            ("Michael Löwy", "La culture juive allemande entre assimilation et catastrophe"),                            # pl9-37-44
+            ("Izio Rosenman", "Éditorial"),                                                                              # pl9-4-6
+            ("Michel Abitbol", "Entre Orient et Occident"),                                                              # pl9-45-51
+            ("Diana Pinto", "Vers une identité juive européenne"),                                                       # pl9-52-63
+            ("Henri Minczeles", "Le concept de l'extraterritorialité juive"),                                            # pl9-64-72
+            ("Jean-Charles Szurek", "Jedwabne et la mémoire polonaise"),                                                # pl9-73-75
+            ("Joanna Tokarska-Bakir", "L'obsession de l'innocence"),                                                    # pl9-76-83
+            ("Daniel Oppenheim", "Dans l'après-coup de l'événement"),                                                   # pl9-84-91
+            ("Daniel Lindenberg", "Europa Judaïca ?"),                                                                   # pl9-9-17
+            ("Nicole Eizner", "Juifs d'Europe. Un témoignage"),                                                         # pl9-92-98
         ],
     },
     10: {
@@ -193,12 +249,35 @@ ISSUES = {
         "year": "2002",
         "dossier": "Israël-diasporas – interrogations",
         "articles": [
-            ("Jacques Burko", "Je suis un Juif diasporiste"),
-            ("Ilan Greilsammer", "Gauche française, gauche israélienne : regards croisés"),
-            ("Jean-Charles Szurek", "Le duo Eyal Sivan et Rony Braumann"),
-            ("Olivier Revault d'Allonnes", "Être Goy en diaspora"),
-            ("Rachid Aous", "Laïcité et démocratie en terre d'Islam"),
-            ("Françoise Carasso", "Primo Levi, le malentendu"),
+            # Order matches Python string-sort of PDF filenames (pl10-NNN.pdf)
+            ("Françoise Carasso", "Primo Levi, le malentendu"),                                                          # pl10-100-106
+            ("Michèle Tauber", "Aharon Appelfeld, ou la mémoire des langues"),                                          # pl10-107-117
+            ("Itzhak Goldberg", "Le petit Chagall illustré"),                                                            # pl10-118-123
+            ("Cyrille Fleischman", "Quarante-sept moins quatre"),                                                        # pl10-124-127
+            ("Daniel Oppenheim", "Trois jours et un enfant"),                                                            # pl10-128-130
+            ("Chantal Steinberg", "Gilda Stambouli souffre… Paula Jacques ne la plaint pas"),                           # pl10-131-132
+            ("", "Yaakov Malkin, La foi athée des Juifs laïques"),                                                       # pl10-133-134
+            ("", "L'Europe ashkénaze. Écriture de l'Histoire et identité juive"),                                        # pl10-135
+            ("Amos Oz et David Grossman", "Débat sur Israël, la situation de la gauche, et du monde"),                  # pl10-14-21
+            ("Daniel Oppenheim", "Passé et présent, idéal et réalité"),                                                 # pl10-22-28
+            ("Ilan Greilsammer", "Gauche française, gauche israélienne : regards croisés"),                              # pl10-29-33
+            ("", "Cinéma israélien/Cinéma Juif : la quête d'une identité"),                                              # pl10-34-41
+            ("Izio Rosenman", "Éditorial : Kaléidoscope"),                                                               # pl10-4-5
+            ("Mihal Friedman et Corrine Levitt", "Juifs et Américains : une communauté intégrée"),                      # pl10-42-46
+            ("Denise Goitein-Galpérin", "Albert Cohen et l'Histoire : son action politique et diplomatique"),            # pl10-47-56
+            ("Jean-Charles Szurek", "Le duo Eyal Sivan et Rony Brauman"),                                               # pl10-57-60
+            ("Olivier Revault d'Allonnes", "Être Goy en diaspora"),                                                     # pl10-61-64
+            ("", "Nahum Goldmann"),                                                                                      # pl10-65-66
+            ("", "Léon Blum, un républicain juif sioniste"),                                                             # pl10-67-69
+            ("Jacques Burko", "Je suis un Juif diasporiste"),                                                            # pl10-7-13
+            ("", "Pierre Mendès France"),                                                                                 # pl10-70-72
+            ("", "Raymond Aron, le 'peuple juif', Israël"),                                                              # pl10-73-75
+            ("Liliane Atlan", "Interview : vous et Israël"),                                                             # pl10-78-79
+            ("Robert Bober", "Interview : vous et Israël"),                                                              # pl10-80-83
+            ("Bianca Lechevalier-Haïm", "Interview : vous et Israël"),                                                  # pl10-84
+            ("Henri Raczymow", "Interview : vous et Israël"),                                                            # pl10-85
+            ("Régine Robin", "Interview : vous et Israël"),                                                              # pl10-86-87
+            ("Rachid Aous", "Laïcité et démocratie en terre d'Islam : une nécessité vitale"),                           # pl10-88-99
         ],
     },
     11: {
@@ -206,11 +285,24 @@ ISSUES = {
         "year": "2003",
         "dossier": "Voyages",
         "articles": [
-            ("Daniel Oppenheim", "Éthique du voyage. Rêver, partir, retrouver l'Autre, se retrouver"),
-            ("Carole Ksiazenicer-Matheron", "America, America – Récits juifs du Nouveau Monde"),
-            ("Marie-France Rouart", "Le Juif errant vu lui-même"),
-            ("Philippe Zard", "L'Europe et les Juifs. Les généalogies spécieuses de Jean-Claude Milner"),
-            ("Hélène Oppenheim-Gluckman", "Être Juif en Chine (compte rendu)"),
+            # Order matches Python string-sort of PDF filenames (pl11-NNN.pdf)
+            ("Carole Ksiazenicer-Matheron", "America, America – Récits juifs du Nouveau Monde"),                        # pl11-15-25
+            ("Rolland Doukhan", "L'Amérique"),                                                                           # pl11-26-29
+            ("Catherine Dana", "En attendant l'Amérique (extrait)"),                                                    # pl11-30-31
+            ("Marie-France Rouart", "Le Juif errant vu lui-même"),                                                      # pl11-32-42
+            ("Izio Rosenman", "Éditorial : Voyages imaginaires, voyages réels"),                                         # pl11-4-5
+            ("Albert Cohen", "Les Valeureux (extrait)"),                                                                 # pl11-43-44
+            ("Jacques Burko", "L'histoire des voyages des trois Benjamin"),                                              # pl11-45-52
+            ("Haim Zafrani", "Les lettrés-voyageurs"),                                                                   # pl11-53-55
+            ("J. Béhar-Druais et C. Steinberg", "Joseph Halévy, un savant voyageur (1827-1917)"),                       # pl11-56-59
+            ("Régine Azria", "Prédicateurs, cochers et colporteurs…"),                                                  # pl11-60-63
+            ("Henriette Asséo", "Tsiganes d'Europe – Les impasses de l'extra-territorialité mentale"),                  # pl11-64-71
+            ("Philippe Zard", "L'Europe et les Juifs. Les généalogies spécieuses de Jean-Claude Milner"),               # pl11-74-88
+            ("Daniel Oppenheim", "Éthique du voyage. Rêver, partir, retrouver l'Autre, se retrouver"),                 # pl11-8-14
+            ("Olivier Revault d'Allonnes", "Un voyage manqué dans la littérature"),                                     # pl11-89-91
+            ("Nicole Eizner", "Voyage immobile en Israël"),                                                              # pl11-92-93
+            ("Hélène Oppenheim-Gluckman", "Être Juif en Chine"),                                                       # pl11-94-96
+            ("Chantal Steinberg", "Amos Oz, Ni exil, ni royaume"),                                                      # pl11-97-99
         ],
     },
     12: {
@@ -218,13 +310,26 @@ ISSUES = {
         "year": "2004",
         "dossier": "Fidélité-infidélité",
         "articles": [
-            ("Daniel Lindenberg", "Le franco-judaïsme entre fidélité et infidélité"),
-            ("Ariane Bendavid", "Spinoza face à sa judéité, le défi de la laïcité"),
-            ("Martine Leibovici", "Mendelssohn ou la fidélité au-delà de la rationalité"),
-            ("Henri Meschonnic", "Fidèle, infidèle, c'est tout comme"),
-            ("Philippe Zard", "Le Commandeur aux enfers. Libres variations sur Don Juan, l'infidélité et le christianisme"),
-            ("Carole Ksiazenicer-Matheron", "Isaac Bashevis Singer, la fiction de l'infidélité"),
-            ("Daniel Oppenheim", "Entre tradition et subversion, la contradiction du roi des schnorrers"),
+            # Order matches Python string-sort of PDF filenames (pl12-NNN.pdf)
+            ("Daniel Lindenberg", "Le franco-judaïsme entre fidélité et infidélité"),                                    # pl12-11-23
+            ("Marc-Henri Klein", "Sabbataï Tsvi, Messie Marrane"),                                                       # pl12-111-114
+            ("Jacques Burko", "Traduire les poètes ?"),                                                                  # pl12-115-124
+            ("Nathalie Debrauwère", "L'infidèle chez Edmond Jabès"),                                                    # pl12-125-140
+            ("Philippe Zard", "Le Commandeur aux enfers. Libres variations sur Don Juan"),                               # pl12-141-158
+            ("Carole Ksiazenicer-Matheron", "Isaac Bashevis Singer, la fiction de l'infidélité"),                       # pl12-159-174
+            ("Daniel Oppenheim", "Entre tradition et subversion, la contradiction du roi des schnorrers"),               # pl12-175-187
+            ("Rolland Doukhan", "Extraits littéraires"),                                                                 # pl12-191-199
+            ("Daniel Dayan", "Information et télévision"),                                                               # pl12-202-215
+            ("Rolland Doukhan", "Va, vis et deviens (film)"),                                                            # pl12-217-218
+            ("Jean-Charles Szurek", "Alexandra Laignel-Lavastine – Esprits d'Europe"),                                  # pl12-219-222
+            ("Chantal Steinberg", "Aharon Appelfeld : Histoire d'une vie"),                                              # pl12-223-226
+            ("Henry Méchoulan", "Fidélité et infidélité au judaïsme chez les juifs d'Espagne"),                         # pl12-25-38
+            ("Ariane Bendavid", "Spinoza face à sa judéité, le défi de la laïcité"),                                   # pl12-40-50
+            ("Martine Leibovici", "Mendelssohn ou la fidélité au-delà de la rationalité"),                              # pl12-51-66
+            ("Izio Rosenman", "Éditorial : interroger, transmettre, être fidèle ou infidèle ?"),                        # pl12-6-8
+            ("Edwige Encaoua", "Entre fidélité et infidélité, réflexions pour une mouvance juive laïque"),              # pl12-67-75
+            ("Hélène Oppenheim-Gluckman", "Fidélité vivante ou figée"),                                                 # pl12-77-92
+            ("Henri Meschonnic", "Fidèle, infidèle, c'est tout comme, merci mon signe"),                                # pl12-93-109
         ],
     },
     13: {
@@ -232,12 +337,29 @@ ISSUES = {
         "year": "2005",
         "dossier": "Le ressentiment",
         "articles": [
-            ("Catherine Chalier", "Le ressentiment de Caïn"),
-            ("Rita Thalmann", "La culture du ressentiment dans l'Allemagne du IIe au IIIe Reich"),
-            ("Paul Zawadski", "Temps et ressentiment"),
-            ("Janine Altounian", "Ni ressentiment, ni pardon"),
-            ("Michèle Fellous", "Conflits de mémoire, conflits de victimes, lutte pour la reconnaissance"),
-            ("Philippe Zard", "Un étrange apôtre. Réflexions sur la question Badiou"),
+            # Order matches Python string-sort of PDF filenames (pl13.NNN.pdf — dots not dashes)
+            ("Jacques Burko", "Une histoire marrane (et pas très marrante)"),                                            # pl13.108-109
+            ("Rivon Krygier", "Entretien sur le ressentiment dans le judaïsme"),                                        # pl13.11-21
+            ("Daniel Lindenberg", "Giflés par la réalité : en France aussi ?"),                                         # pl13.110-116
+            ("Gilberte Finkel", "Ressentiments et désarroi d'une Israélienne"),                                         # pl13.117-118
+            ("Jacques Burko", "Une histoire édifiante"),                                                                 # pl13.122
+            ("Jean-Charles Szurek", "Jerzy Ficowski, poète et écrivain polonais"),                                      # pl13.123-126
+            ("Jean-Charles Szurek", "Danielle Rozenberg, L'Espagne contemporaine et la question juive"),                # pl13.127-129
+            ("Anny Dayan Rosenman", "Berthe Burko-Falcman, Un prénom républicain"),                                     # pl13.130
+            ("Rita Thalmann", "La culture du ressentiment dans l'Allemagne du IIe au IIIe Reich"),                      # pl13.22-31
+            ("Paul Zawadski", "Temps et ressentiment"),                                                                  # pl13.32-40
+            ("Izio Rosenman", "Éditorial : Sortir du ressentiment ?"),                                                   # pl13.4-5
+            ("Janine Altounian", "Ni ressentiment, ni pardon"),                                                          # pl13.41-49
+            ("Seloua Luste Boulbina", "L'ascétisme, une maladie érigée en idéal"),                                     # pl13.50-57
+            ("Andrzej Szczypiorski", "Le ressentiment du Goy contre le Juif"),                                          # pl13.58-59
+            ("Catherine Chalier", "Le ressentiment de Caïn"),                                                           # pl13.6-10
+            ("Jean Beckouche", "Le travail humanitaire et le conflit israélo-palestinien"),                              # pl13.60-67
+            ("Physicians for Human Rights-Israel", "PHR-Israel"),                                                        # pl13.68-69
+            ("Daniel Oppenheim", "Le sentiment de voir ses droits non reconnus"),                                        # pl13.70-77
+            ("Michel Zaoui", "Réflexions sur l'affaire Lipietz"),                                                       # pl13.78-81
+            ("Michèle Fellous", "Conflits de mémoire, conflits de victimes"),                                            # pl13.82-87
+            ("Philippe Zard", "Un étrange apôtre. Réflexions sur la question Badiou"),                                  # pl13.90-97
+            ("Régine Azria", "Les juifs et l'interdit de l'image"),                                                     # pl13.98-107
         ],
     },
     14: {
@@ -245,14 +367,33 @@ ISSUES = {
         "year": "2007",
         "dossier": "Frontières",
         "articles": [
-            ("Emilia Ndiaye", "Frontières entre le barbare et le civilisé dans l'Antiquité"),
-            ("Catherine Withol de Wenden", "Les frontières de l'Europe"),
-            ("Carole Ksiazenicer-Matheron", "Frontières ashkénazes"),
-            ("Riccardo Calimani", "Le ghetto – paradigme des paradoxes de l'histoire juive"),
-            ("Zygmunt Bauman", "Juifs et Européens. Les anciens et les nouveaux..."),
-            ("Philippe Zard", "De quelques enjeux éthiques de La Métamorphose"),
-            ("Anny Dayan Rosenman", "Aux frontières de l'identité et de l'Histoire – Monsieur Klein"),
-            ("Ilan Greilsammer", "Réflexions sur les futures frontières israélo-palestiniennes"),
+            # Order matches Python string-sort of PDF filenames (pl14-NNN.pdf)
+            ("Philippe Zard", "De quelques enjeux éthiques de La Métamorphose"),                                        # pl14-106-114
+            ("Daniel Oppenheim", "Variations sur la frontière, avec Iouri Olecha et Georges Orwell"),                   # pl14-115-125
+            ("Anny Dayan Rosenman", "Aux frontières de l'identité et de l'Histoire – Monsieur Klein"),                 # pl14-126-134
+            ("Ilan Greilsammer", "Réflexions sur les futures frontières israélo-palestiniennes"),                       # pl14-135-139
+            ("Denis Charbit", "La gauche aux prises avec le sionisme"),                                                 # pl14-143-149
+            ("Catherine Witol de Wenden", "Les frontières de l'Europe"),                                                # pl14-15-28
+            ("Philippe Velilla", "Les Juifs de France et l'élection présidentielle de 2007"),                           # pl14-150-159
+            ("Rolland Doukhan", "La faute de la mariée"),                                                               # pl14-160-171
+            ("Chams Eddine Hadef-Benfatima", "Dibbouk et Dom Juan"),                                                   # pl14-172-175
+            ("Jean-Charles Szurek", "Jan Gross, conscience juive de la Pologne"),                                       # pl14-176-179
+            ("Izio Rosenman et Jean-Charles Szurek", "Hommage à Jacques Burko"),                                       # pl14-183-184
+            ("Jean-Charles Szurek", "Histoire d'une traduction, histoire d'une amitié"),                                # pl14-185
+            ("Jacques Burko", "Place des Abbesses (poème)"),                                                            # pl14-186
+            ("Chantal Steinberg", "Alaa El Aswany, Chicago"),                                                           # pl14-189-191
+            ("Chantal Steinberg", "Orly Castel-Bloom, Textile"),                                                        # pl14-192
+            ("Carole Ksiazenicer-Matheron", "Royaumes juifs. Trésors de la littérature yiddish"),                      # pl14-193-194
+            ("Carole Ksiazenicer-Matheron", "Frontières ashkénazes"),                                                   # pl14-29-40
+            ("Izio Rosenman", "Éditorial"),                                                                              # pl14-3-4
+            ("Riccardo Calimani", "Le ghetto – paradigme des paradoxes de l'histoire juive"),                           # pl14-41-47
+            ("Zygmunt Bauman", "Juifs et Européens. Les anciens et les nouveaux"),                                      # pl14-48-58
+            ("Emilia Ndiaye", "Frontières entre le barbare et le civilisé dans l'Antiquité"),                           # pl14-5-14
+            ("Henry Méchoulan", "Les statuts de pureté de sang"),                                                       # pl14-59-66
+            ("Sophie Hirel-Wouts", "Traces marranes dans La Célestine de Fernando de Rojas"),                          # pl14-67-75
+            ("Régine Azria", "Communauté et communautarisme"),                                                           # pl14-76-82
+            ("Philippe Zard et Nathalie Azoulai", "La frontière invisible (entretien)"),                                # pl14-83-91
+            ("Marita Keilson-Lauritz", "Entre Amsterdam et Jérusalem – Jacob Israël de Haan"),                         # pl14-92-105
         ],
     },
     15: {
@@ -260,13 +401,26 @@ ISSUES = {
         "year": "2009",
         "dossier": "Les Pères Juifs",
         "articles": [
-            ("Jean-Charles Szurek", "La Guerre d'Espagne, mon père et moi"),
-            ("Carole Ksiazenicer-Matheron", "En quête du père – devenirs de la disparition"),
-            ("Anny Dayan Rosenman", "Romain Gary – au nom du père"),
-            ("Pierre Pachet", "Le père juif selon Bruno Schulz"),
-            ("Daniel Oppenheim", "Être fils, être père dans la Shoah et après"),
-            ("Mireille Hadas-Lebel", "Mariages mixtes – matrilinéarité ou patrilinéarité"),
-            ("Jean-Yves Potel", "Anna Langfus et son double"),
+            # Order matches Python string-sort of PDF filenames (pl15-NNN.pdf)
+            ("Philippe Velilla", "Barack Obama, les Juifs et Israël"),                                                   # pl15-109-118
+            ("", "Les sionismes et la paix (table ronde)"),                                                              # pl15-119-131
+            ("Chantal Steinberg", "Le village de l'Allemand de Boualem Sansal"),                                        # pl15-133-134
+            ("Michel Grojnowski", "Je me souviens"),                                                                     # pl15-15-20
+            ("Carole Ksiazenicer-Matheron", "En quête du père – devenirs de la disparition"),                           # pl15-21-30
+            ("Izio Rosenman", "Éditorial : Les pères juifs, pas assez ou trop présents ?"),                              # pl15-3-4
+            ("Anny Dayan Rosenman", "Romain Gary – au nom du père"),                                                    # pl15-31-40
+            ("Pierre Pachet", "Le père juif selon Bruno Schulz"),                                                        # pl15-41-42
+            ("Daniel Oppenheim", "Être fils, être père dans la Shoah et après"),                                        # pl15-43-50
+            ("Sophie Nizard", "Les pères juifs adoptifs sont-ils des mères juives ?"),                                  # pl15-51-61
+            ("Jean-Claude Grumberg", "Entretien : À propos de Mon père. Inventaire"),                                   # pl15-6-8
+            ("Sylvie Sesé-Léger", "Sigmund Freud, un père"),                                                            # pl15-63-70
+            ("Hélène Oppenheim-Gluckman", "Le meurtre du père"),                                                        # pl15-71-75
+            ("Mireille Hadas-Lebel", "Mariages mixtes – matrilinéarité ou patrilinéarité"),                             # pl15-77-80
+            ("Théo Klein", "Conversation imaginaire avec Isaac"),                                                        # pl15-81-89
+            ("Jean-Charles Szurek", "La Guerre d'Espagne, mon père et moi"),                                            # pl15-9-14
+            ("Jean-Yves Potel", "Anna Langfus et son double"),                                                           # pl15-91-96
+            ("Anna Langfus", "De la difficulté pour un écrivain de traduire en fiction la tragédie juive"),             # pl15-97-98
+            ("Samuel Ghiles-Meilhac", "Une diplomatie de la mémoire ?"),                                                # pl15-99-108
         ],
     },
     16: {
@@ -274,15 +428,31 @@ ISSUES = {
         "year": "2010",
         "dossier": "Juifs aux États-Unis",
         "articles": [
-            ("Françoise S. Ouzan", "Le judaïsme américain en question – transformations identitaires et sociales"),
-            ("Carole Matheron-Ksiazenicer", "Abe Cahan, une vie en Amérique"),
-            ("Hélène Oppenheim-Gluckman", "Freud et l'Amérique"),
-            ("Jacques Solé", "L'apogée de la prostitution juive aux États-Unis vers 1900"),
-            ("Nicole Lapierre", "L'histoire de Julius Lester"),
-            ("Lewis R. Gordon", "Réflexions sur la question afro-juive"),
-            ("Rachel Ertel", "Le vif saisi le mort : sur Cynthia Ozick"),
-            ("Nathalie Azoulai", "La question juive dans Mad Men"),
-            ("Nadine Vasseur", "Détective dans la NYPD"),
+            # Order matches Python string-sort of PDF filenames (pl16-NNN.pdf)
+            ("Rachel Ertel", "Le vif saisi le mort : sur Cynthia Ozick"),                                               # pl16-102-110
+            ("Guido Furci", "Fictions d'Amérique – Goodbye, Columbus"),                                                 # pl16-112-118
+            ("Anissia Bouillot", "« The other kind » : à propos de l'œuvre de James Gray"),                             # pl16-120-131
+            ("Nathalie Azoulai", "La question juive dans Mad Men"),                                                      # pl16-132-136
+            ("Mathias Dreyfuss et Raphaël Sigal", "Radical Jewish Culture"),                                             # pl16-138-150
+            ("Henri Lewi", "Incertitudes américaines"),                                                                  # pl16-152-161
+            ("Nadine Vasseur", "Alan Sandomir, Détective dans la NYPD"),                                                # pl16-162-165
+            ("Nadine Vasseur", "Marc Marder, Un Américain à Paris"),                                                    # pl16-166-168
+            ("Philippe Velilla", "L'internationale conservatrice et Israël"),                                            # pl16-170-178
+            ("Rachel Ertel", "Sutzkever – Lumière et ombre"),                                                            # pl16-180-187
+            ("Chantal Steinberg", "L'horizon de Patrick Modiano"),                                                      # pl16-188
+            ("Jean-Charles Szurek", "Henri Minczeles, Le mouvement ouvrier juif"),                                      # pl16-189
+            ("", "Appel à la raison"),                                                                                   # pl16-190
+            ("Carole Ksiazenicer-Matheron", "Abe Cahan, une vie en Amérique"),                                          # pl16-24-36
+            ("Hélène Oppenheim-Gluckman", "Freud et l'Amérique"),                                                       # pl16-38-45
+            ("Izio Rosenman", "Éditorial : Les Juifs d'Amérique d'hier à demain"),                                      # pl16-4-5
+            ("Jacques Solé", "L'apogée de la prostitution juive aux États-Unis vers 1900"),                             # pl16-46-50
+            ("Rabbin Stephen Berkovitz", "Le mouvement reconstructionniste du judaïsme américain"),                      # pl16-52-61
+            ("Françoise S. Ouzan", "Le judaïsme américain en question – transformations identitaires"),                  # pl16-6-23
+            ("Nicole Lapierre", "L'histoire de Julius Lester"),                                                          # pl16-62-73
+            ("Lewis R. Gordon", "Réflexions sur la question afro-juive"),                                               # pl16-74-81
+            ("Célia Belin", "J Street face à l'AIPAC : quand David s'attaque à Goliath"),                              # pl16-82-87
+            ("Daniel Oppenheim", "Lamed Shapiro, de Kichinev 1903 à New-York 1930"),                                   # pl16-88-95
+            ("Alan Astro", "Deux écrivains yiddish au Texas"),                                                           # pl16-96-101
         ],
     },
     17: {
@@ -290,12 +460,31 @@ ISSUES = {
         "year": "2012",
         "dossier": "Figures du retour",
         "articles": [
-            ("George Packer", "David Grossman, l'inconsolé"),
-            ("Alain Medam", "Retours sans retours"),
-            ("Philippe Zard", "De Révolution en Révélation : impasse Benny Lévy"),
-            ("Gérard Haddad", "Ben Yehouda et la renaissance de l'hébreu"),
-            ("Carole Ksiazenicer-Matheron", "A l'est d'Éden : nouvelles du retour et de l'oubli chez I. J. Singer"),
-            ("Fleur Kuhn", "Melnitz de Charles Lewinsky ou les revenances du roman historique"),
+            # Order matches Python string-sort of PDF filenames (pl17-NNN.pdf)
+            ("Daniel Oppenheim et Hélène Oppenheim-Gluckman", "Les Disparus de Daniel Mendelsohn"),                     # pl17-105-114
+            ("Alain Kleinberger", "Welcome in Vienna : retour sans exil ?"),                                             # pl17-115-116
+            ("Michal Gans", "Survivre ou revivre dans l'après Hurban ?"),                                               # pl17-117-124
+            ("Sandra Lustig", "Revenir vivre en Allemagne après la Shoah"),                                              # pl17-125-130
+            ("Hélène Oppenheim-Gluckman", "Entretien avec Jean-Claude, un Juif polonais"),                              # pl17-131-140
+            ("Jean-Charles Szurek", "Le retour de Yaël Bartana en Pologne"),                                            # pl17-141-144
+            ("Céline Masson", "Les changements de nom dans la France d'après-guerre"),                                  # pl17-145-148
+            ("Marius Schattner", "Vu d'Israël : entre la place Tahrir et l'avenue Rothschild"),                         # pl17-149-155
+            ("Philippe Velilla", "L'internationale progressiste et Israël"),                                             # pl17-159-163
+            ("Philippe Velilla", "L'isolement diplomatique d'Israël"),                                                   # pl17-164-171
+            ("Henri Minczeles", "Souvenirs"),                                                                            # pl17-172-174
+            ("Chantal Wolezyk-Steinberg", "Ce que le jour doit à la nuit"),                                             # pl17-175-176
+            ("Jean-Charles Szurek", "L'heure d'exactitude : Annette Wieviorka"),                                        # pl17-177-178
+            ("Alain Medam", "Retours sans retours"),                                                                     # pl17-29-32
+            ("Rabbin Yeshaya Dalsace", "Entretien"),                                                                     # pl17-33-38
+            ("Philippe Zard", "De Révolution en Révélation : impasse Benny Lévy"),                                      # pl17-39-49
+            ("Izio Rosenman", "Éditorial : À la recherche d'un monde perdu"),                                           # pl17-5-6
+            ("Gérard Haddad", "Ben Yehouda et la renaissance de l'hébreu"),                                             # pl17-50-55
+            ("Carole Ksiazenicer-Matheron", "À l'est d'Éden : nouvelles du retour et de l'oubli chez I. J. Singer"),   # pl17-56-66
+            ("Fleur Kuhn", "Melnitz de Charles Lewinsky ou les revenances du roman historique"),                        # pl17-67-75
+            ("George Packer", "David Grossman, l'inconsolé"),                                                            # pl17-7-25
+            ("Catherine Fhima", "Trajectoires de retour ou ré-affiliation ? Edmond Fleg et André Spire"),              # pl17-76-86
+            ("Martine Leibovici", "Quelques aller-retour au cœur de l'œuvre autobiographique d'Assia Djebar"),         # pl17-87-94
+            ("Anny Dayan Rosenman", "Primo Levi : La Trêve, un impossible retour ?"),                                  # pl17-97-104
         ],
     },
     18: {
@@ -303,13 +492,35 @@ ISSUES = {
         "year": "2013",
         "dossier": "Histoire et mémoire",
         "articles": [
-            ("Catherine Fhima", "Trajectoires de retour ou ré-affiliation ? Edmond Fleg et André Spire"),
-            ("Martine Leibovici", "Quelques aller-retour au cœur de l'œuvre autobiographique d'Assia Djebar"),
-            ("Anny Dayan Rosenman", "Primo Levi : La Trêve, un impossible retour ?"),
-            ("Jean-Charles Szurek", "Le retour de Yaël Bartana en Pologne"),
-            ("Martine Leibovici", "Une critique radicale du sionisme à partir de l'histoire juive diasporique ?"),
-            ("Carole Ksiazenicer-Matheron", "Traduire"),
-            ("Berthe Burko-Falcman", "Absence"),
+            # Order matches Python string-sort of PDF filenames (pl18-NNN.pdf)
+            ("Françoise Blum et al.", "Génocides et politiques mémorielles"),                                            # pl18-109-115
+            ("Ewa Maczka-Tartakowsky", "La littérature à défaut d'histoire ?"),                                         # pl18-11-21
+            ("Alain Medam", "Figures en fugue"),                                                                         # pl18-119-125
+            ("Berthe Burko-Falcman", "Un cheval pour pleurer"),                                                          # pl18-126-130
+            ("Jean-Charles Szurek", "En lisant Ivan Jablonka"),                                                          # pl18-131-134
+            ("Lucette Valensi", "Mes langues maternelles, plus d'autres"),                                               # pl18-135-142
+            ("Carole Ksiazenicer-Matheron", "Traduire"),                                                                 # pl18-143-151
+            ("Marc Sagnol", "Évocations de Galicie"),                                                                   # pl18-153-162
+            ("Anne Geisler-Szmulewicz", "Un combattant pour la Liberté, Jacquot Szmulewicz"),                           # pl18-163-176
+            ("Henri Cohen-Solal et Dominique Rividi", "Jeunes à risques"),                                              # pl18-177-183
+            ("Izio Rosenman et Hélène Oppenheim-Gluckman", "Entretiens avec Élie Wajeman"),                             # pl18-184-194
+            ("Claude Aziza", "Rencontres judéo-chrétiennes dans le péplum"),                                             # pl18-197-201
+            ("Guido Furci", "Le livre de la grammaire intérieure au prisme du cinéma"),                                 # pl18-202-207
+            ("Martine Leibovici", "Une critique radicale du sionisme à partir de l'histoire juive diasporique ?"),      # pl18-211-224
+            ("Nadja Djurić", "Psaume 44 de Danilo Kiš"),                                                               # pl18-22-30
+            ("Eva Illouz", "Le prix de Judith Butler"),                                                                  # pl18-225-227
+            ("Philippe Velilla", "Les Juifs de France et l'élection présidentielle de 2012"),                           # pl18-231-237
+            ("Chantal Wolezyk", "Le Club des incorrigibles optimistes (comptes rendus)"),                               # pl18-238-239
+            ("Fleur Kuhn", "D'un Je à l'autre, les langages d'André Schwarz-Bart"),                                     # pl18-31-41
+            ("Barbara Agnese", "Sur Marlene Streeruwitz"),                                                               # pl18-42-49
+            ("Izio Rosenman", "Éditorial : Que faisons-nous de notre histoire ?"),                                       # pl18-5-6
+            ("", "Le mythe de Massada"),                                                                                 # pl18-53-61
+            ("Aryeh Barnea", "Les dangers du paradigme de Massada"),                                                    # pl18-62-63
+            ("Anny Bloch-Raymond", "L'occultation de l'esclavage"),                                                     # pl18-65-69
+            ("Frédéric Abecassis", "Les Juifs dans l'islam méditerranéen"),                                             # pl18-70-81
+            ("Guideon Meron et Oded Chalom", "Moche Shapira"),                                                          # pl18-82-90
+            ("Daniel Oppenheim", "Écrire pour transmettre l'expérience de la barbarie"),                                # pl18-91-98
+            ("Alain Blum et Marta Craveri", "Passés nationaux ou histoire européenne"),                                 # pl18-99-108
         ],
     },
     19: {
@@ -350,14 +561,26 @@ ISSUES = {
         "year": "2016",
         "dossier": "Dialogue des religions et des cultures",
         "articles": [
-            ("Franklin Rausky", "Le dialogue judéo-chrétien. Une mutation révolutionnaire"),
-            ("Martine Leibovici", "Philosophie et révélation biblique selon Leo Strauss : un dialogue limité"),
-            ("Joël Hubrecht", "Après un crime de masse, comment la justice peut-elle relancer le dialogue ?"),
-            ("Jean-Yves Potel", "Du dialogue avec les nazis"),
-            ("Hélène Oppenheim-Gluckman", "Grand-père n'était pas un nazi"),
-            ("Anny Dayan Rosenman", "Répondre à la puissante voix des morts. Le dialogue dans l'œuvre d'Elie Wiesel"),
-            ("Daniel Oppenheim", "Construire et habiter l'espace du dialogue et de l'hospitalité"),
-            ("Brigitte Stora et Philippe Zard", "Le sujet qui fâche (entretien)"),
+            # Order matches Python string-sort of PDF filenames (pl20-NNN.pdf)
+            ("Rahel Wasserfall", "Le CEDAR – une méthodologie pour un vécu dans la différence"),                         # pl20-105-117
+            ("Martine Leibovici", "Philosophie et révélation biblique selon Leo Strauss : un dialogue limité"),          # pl20-11-22
+            ("Daniel Oppenheim", "Dialoguer avec les adolescents au sujet du terrorisme"),                               # pl20-118-124
+            ("Brigitte Stora et Philippe Zard", "Le sujet qui fâche (entretien)"),                                      # pl20-125-133
+            ("Gérard Haddad", "Les critères du dialogue et leur application à la psychanalyse"),                         # pl20-134-138
+            ("Hélène Oppenheim-Gluckman", "Dialogue entre cinq générations"),                                            # pl20-139-144
+            ("Philippe Velilla", "Menaces contre la démocratie israélienne"),                                            # pl20-145-150
+            ("Anny Dayan Rosenman", "Laurent Munnich (entretien) : Akadem"),                                             # pl20-23-31
+            ("Joël Hubrecht", "Après un crime de masse, comment la justice peut-elle relancer le dialogue ?"),           # pl20-32-41
+            ("Cécile Rousselet", "Dialogue entre bourreau et victime dans Vie et destin de Vassili Grossman"),          # pl20-42-56
+            ("Izio Rosenman", "Éditorial : Dialogue"),                                                                   # pl20-5-6
+            ("Hélène Oppenheim-Gluckman", "Grand-père n'était pas un nazi"),                                            # pl20-57-59
+            ("Monique Halpern et Jean-Charles Szurek", "Un étrange dialogue"),                                           # pl20-60-62
+            ("Fleur Kuhn-Kennedy", "« Écoute, mon ami, ce qui se passe ici »"),                                         # pl20-63-70
+            ("Franklin Rausky", "Le dialogue judéo-chrétien. Une mutation révolutionnaire"),                             # pl20-7-10
+            ("Anny Dayan Rosenman", "Répondre à la puissante voix des morts. Le dialogue dans l'œuvre d'Elie Wiesel"), # pl20-71-82
+            ("Guido Furci et Fleur Kuhn-Kennedy", "Dialogues en résistance dans See You Soon Again"),                   # pl20-83-89
+            ("Daniel Oppenheim", "Construire et habiter l'espace du dialogue et de l'hospitalité"),                     # pl20-90-97
+            ("Julien Cann", "Givat Haviva, un lieu de dialogue"),                                                        # pl20-98-104
         ],
     },
     21: {
@@ -365,14 +588,22 @@ ISSUES = {
         "year": "2018",
         "dossier": "La peur",
         "articles": [
-            ("Russell Jacoby", "Peur et violence"),
-            ("Martine Leibovici", "Peur et sentiment d'invulnérabilité dans Masse et puissance"),
-            ("Delphine Horvilleur", "La peur dans la tradition juive"),
-            ("Hélène Oppenheim-Gluckman", "Trauma et destructivité ?"),
-            ("Daniel Oppenheim", "Peur et terreur"),
-            ("Brigitte Stora", "Même pas peur ! Les chiens, les Justes et Spartacus"),
-            ("Jean-Charles Szurek", "Le retour de la peur en Pologne"),
-            ("Lydie Decobert", "Les ressorts de la peur dans le cinéma d'Alfred Hitchcock"),
+            # Order matches Python string-sort of PDF filenames (pl21-NNN.pdf)
+            ("Guila Clara Kessous", "Qui a peur du Grand méchant Dieu ?"),                                              # pl21-101-111
+            ("Russell Jacoby", "Peur et violence"),                                                                      # pl21-11-18
+            ("Yaël Pachet", "Mon père n'avait pas peur d'être juif"),                                                   # pl21-112-115
+            ("Philippe Velilla", "Contrainte religieuse et contrainte politique en Israël"),                             # pl21-116-124
+            ("Gilberte Finkel", "Kaléidoscope"),                                                                         # pl21-125-132
+            ("Sylvie Halpern", "Talmud à la sauce sud-coréenne"),                                                       # pl21-133-136
+            ("Martine Leibovici", "Peur et sentiment d'invulnérabilité dans Masse et puissance d'Elias Canetti"),       # pl21-19-34
+            ("Delphine Horvilleur", "La peur dans la tradition juive"),                                                  # pl21-35-47
+            ("Hélène Oppenheim-Gluckman", "Trauma et destructivité ?"),                                                 # pl21-48-55
+            ("Daniel Oppenheim", "Peurs et terreurs. Leurs causes et leurs conséquences"),                              # pl21-56-65
+            ("Brigitte Stora", "Même pas peur !"),                                                                       # pl21-66-71
+            ("Izio Rosenman", "Éditorial"),                                                                              # pl21-7-10
+            ("Jean-Charles Szurek", "Le retour de la peur en Pologne"),                                                 # pl21-72-76
+            ("Lydie Decobert", "Les ressorts de la peur dans le cinéma d'Alfred Hitchcock"),                            # pl21-77-90
+            ("Guido Furci", "La peur dans Badenheim 1939 d'Aharon Appelfeld"),                                          # pl21-91-100
         ],
     },
     22: {
@@ -380,16 +611,25 @@ ISSUES = {
         "year": "2020",
         "dossier": "Le Juif et l'Autre",
         "articles": [
-            ("Mireille Hadas-Lebel", "Les juifs dans le monde hellénistique romain"),
-            ("Danny Trom", "L'État-gardien, l'État de l'Autre"),
-            ("François Rachline", "Juif, ou l'autre en soi"),
-            ("Brigitte Stora", "Le juif et l'autre, une identité en péril"),
-            ("Nadine Vasseur", "Les nôtres et les autres"),
-            ("Martine Leibovici", "Entre autres. Quelques déclinaisons juives de la relation insider/outsider"),
-            ("Michèle Tauber", "L'« autre » dans la littérature israélienne moderne"),
-            ("Philippe Zard", "Anatomie d'un embarras. En lisant la poésie politique de Mahmoud Darwich"),
-            ("Daniel Oppenheim", "Le regard sur les hommes et sur le monde d'Isaac Babel"),
-            ("Simon Wuhl", "Les foyers de la haine antisémite en France"),
+            # Order matches Python string-sort of PDF filenames (pl22-NNN.pdf)
+            ("Francine Kaufmann", "L'Autre dans la vie et l'œuvre d'André Schwarz-Bart"),                               # pl22-105-116
+            ("Guido Furci", "Retour sur Philip Roth : « Eli le fanatique » et son autre"),                              # pl22-117-129
+            ("François Ardeven", "Blaise Pascal rencontre les Juifs"),                                                   # pl22-130-138
+            ("Gérard Haddad", "Lacan et « ses » Juifs"),                                                                # pl22-139-147
+            ("Simon Wuhl", "Les foyers de la haine antisémite en France"),                                               # pl22-148-181
+            ("Danny Trom", "L'État-gardien, État de l'Autre"),                                                          # pl22-15-21
+            ("Daniel Oppenheim", "Le regard sur les hommes et sur le monde d'Isaac Babel"),                             # pl22-182-188
+            ("François Rachline", "Juif, ou l'autre en soi"),                                                           # pl22-22-27
+            ("Emmanuel Levinas", "Le judaïsme et l'Autre (extrait de Difficile Liberté)"),                              # pl22-28-29
+            ("Brigitte Stora", "L'antisémitisme et le refus de l'Autre"),                                               # pl22-30-39
+            ("Izio Rosenman", "Éditorial : L'Autre devant nous et l'Autre en nous"),                                    # pl22-4-7
+            ("Gérard Israël", "René Cassin, l'homme des droits de l'Homme"),                                            # pl22-40-42
+            ("Nadine Vasseur", "Les nôtres et les autres"),                                                              # pl22-43-48
+            ("Yann Boissière", "Se reconnaître dans l'Autre : devenir rabbin"),                                         # pl22-49-56
+            ("Martine Leibovici", "Entre autres. Quelques déclinaisons juives de la relation insider/outsider"),         # pl22-57-72
+            ("Michèle Tauber", "L'« autre » dans la littérature israélienne moderne"),                                  # pl22-73-86
+            ("Mireille Hadas-Lebel", "Les juifs dans le monde hellénistique romain"),                                   # pl22-8-14
+            ("Philippe Zard", "Anatomie d'un embarras. En lisant la poésie politique de Mahmoud Darwich"),              # pl22-87-104
         ],
     },
     23: {
@@ -2117,6 +2357,14 @@ def build():
 
                 if include_in_sommaire:
                     pdf_articles.append((slug, title_candidate, author_candidate))
+
+            # Move editorial to front of sommaire display
+            editorial_idx = next(
+                (j for j, (_, t, _) in enumerate(pdf_articles) if 'éditorial' in t.lower()),
+                None
+            )
+            if editorial_idx is not None and editorial_idx > 0:
+                pdf_articles = [pdf_articles[editorial_idx]] + pdf_articles[:editorial_idx] + pdf_articles[editorial_idx+1:]
 
             # Generate issue index: clean sommaire using known ISSUES metadata
             articles_html = ""
