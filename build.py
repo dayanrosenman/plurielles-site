@@ -180,6 +180,8 @@ ISSUES = {
             ("Régine Robin", "La nostalgie du yiddish chez Kafka"),                                                      # pl7-88-97
             ("Franz Kafka", "Discours sur la langue yiddish"),                                                           # pl7-99-101
         ],
+        # Printing order: indices into string-sorted PDF list above, by page number
+        "order": [24, 27, 2, 16, 22, 23, 25, 26, 28, 29, 30, 31, 0, 1, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17, 18, 19, 20, 21],
     },
     8: {
         "title": "Un engagement vers les autres / Les Juifs et l'engagement politique",
@@ -217,6 +219,7 @@ ISSUES = {
             ("Astrid Starck", "Lionel Rogosin, un cinéaste contre l'apartheid"),                                        # pl8-83-93
             ("Rolland Doukhan", "Daniel Timsit, Suite baroque"),                                                        # pl8-94-102
         ],
+        "order": [14, 22, 0, 10, 11, 12, 13, 15, 16, 17, 18, 19, 20, 21, 23, 24, 25, 26, 27, 28, 1, 2, 3, 4, 5, 6, 7, 8, 9],
     },
     9: {
         "title": "Les Juifs et l'Europe",
@@ -243,6 +246,7 @@ ISSUES = {
             ("Daniel Lindenberg", "Europa Judaïca ?"),                                                                   # pl9-9-17
             ("Nicole Eizner", "Juifs d'Europe. Un témoignage"),                                                         # pl9-92-98
         ],
+        "order": [9, 16, 5, 6, 7, 8, 10, 11, 12, 13, 14, 15, 17, 0, 1, 2, 3, 4],
     },
     10: {
         "title": "Kaléidoscope / Israël-diasporas – interrogations",
@@ -279,6 +283,7 @@ ISSUES = {
             ("Régine Robin", "Interview : vous et Israël"),                                                              # pl10-86-87
             ("Rachid Aous", "Laïcité et démocratie en terre d'Islam : une nécessité vitale"),                           # pl10-88-99
         ],
+        "order": [12, 19, 8, 9, 10, 11, 13, 14, 15, 16, 17, 18, 20, 21, 22, 23, 24, 25, 26, 27, 0, 1, 2, 3, 4, 5, 6, 7],
     },
     11: {
         "title": "Voyages imaginaires, voyages réels",
@@ -304,6 +309,7 @@ ISSUES = {
             ("Hélène Oppenheim-Gluckman", "Être Juif en Chine"),                                                       # pl11-94-96
             ("Chantal Steinberg", "Amos Oz, Ni exil, ni royaume"),                                                      # pl11-97-99
         ],
+        "order": [4, 12, 0, 1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 13, 14, 15, 16],
     },
     12: {
         "title": "Interroger, transmettre, être fidèle ou infidèle ?",
@@ -331,6 +337,7 @@ ISSUES = {
             ("Hélène Oppenheim-Gluckman", "Fidélité vivante ou figée"),                                                 # pl12-77-92
             ("Henri Meschonnic", "Fidèle, infidèle, c'est tout comme, merci mon signe"),                                # pl12-93-109
         ],
+        "order": [15, 0, 12, 13, 14, 16, 17, 18, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
     },
     13: {
         "title": "Sortir du ressentiment ?",
@@ -361,6 +368,7 @@ ISSUES = {
             ("Philippe Zard", "Un étrange apôtre. Réflexions sur la question Badiou"),                                  # pl13.90-97
             ("Régine Azria", "Les juifs et l'interdit de l'image"),                                                     # pl13.98-107
         ],
+        "order": [10, 14, 1, 8, 9, 11, 12, 13, 15, 16, 17, 18, 19, 20, 21, 0, 2, 3, 4, 5, 6, 7],
     },
     14: {
         "title": "Frontières",
@@ -395,6 +403,7 @@ ISSUES = {
             ("Philippe Zard et Nathalie Azoulai", "La frontière invisible (entretien)"),                                # pl14-83-91
             ("Marita Keilson-Lauritz", "Entre Amsterdam et Jérusalem – Jacob Israël de Haan"),                         # pl14-92-105
         ],
+        "order": [17, 20, 5, 16, 18, 19, 21, 22, 23, 24, 25, 0, 1, 2, 3, 4, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
     },
     15: {
         "title": "Les Pères Juifs",
@@ -422,6 +431,7 @@ ISSUES = {
             ("Anna Langfus", "De la difficulté pour un écrivain de traduire en fiction la tragédie juive"),             # pl15-97-98
             ("Samuel Ghiles-Meilhac", "Une diplomatie de la mémoire ?"),                                                # pl15-99-108
         ],
+        "order": [5, 10, 15, 3, 4, 6, 7, 8, 9, 11, 12, 13, 14, 16, 17, 18, 0, 1, 2],
     },
     16: {
         "title": "Il était une fois l'Amérique – Juifs aux États-Unis",
@@ -454,6 +464,7 @@ ISSUES = {
             ("Daniel Oppenheim", "Lamed Shapiro, de Kichinev 1903 à New-York 1930"),                                   # pl16-88-95
             ("Alan Astro", "Deux écrivains yiddish au Texas"),                                                           # pl16-96-101
         ],
+        "order": [15, 18, 13, 14, 16, 17, 19, 20, 21, 22, 23, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
     },
     17: {
         "title": "Figures du retour – retrouver, réparer, renouer",
@@ -486,6 +497,7 @@ ISSUES = {
             ("Martine Leibovici", "Quelques aller-retour au cœur de l'œuvre autobiographique d'Assia Djebar"),         # pl17-87-94
             ("Anny Dayan Rosenman", "Primo Levi : La Trêve, un impossible retour ?"),                                  # pl17-97-104
         ],
+        "order": [16, 20, 13, 14, 15, 17, 18, 19, 21, 22, 23, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
     },
     18: {
         "title": "Que faisons-nous de notre histoire ?",
@@ -522,6 +534,7 @@ ISSUES = {
             ("Daniel Oppenheim", "Écrire pour transmettre l'expérience de la barbarie"),                                # pl18-91-98
             ("Alain Blum et Marta Craveri", "Passés nationaux ou histoire européenne"),                                 # pl18-99-108
         ],
+        "order": [20, 1, 14, 18, 19, 21, 22, 23, 24, 25, 26, 27, 0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17],
     },
     19: {
         "title": "Intellectuels juifs – Itinéraires, engagements, écritures",
@@ -555,6 +568,7 @@ ISSUES = {
             ("Daniel Oppenheim", "L'expérience de la barbarie par l'intellectuel et l'éthique du témoignage selon Jean Améry"),  # pl19-91-97
             ("Michaël Löwy", "De quelques intellectuels juifs radicaux aux USA et en Europe"),                     # pl19-98-108
         ],
+        "order": [17, 20, 5, 9, 13, 14, 15, 16, 18, 19, 21, 22, 23, 24, 0, 1, 2, 3, 4, 6, 7, 8, 10, 11, 12],
     },
     20: {
         "title": "Dialogue",
@@ -582,6 +596,7 @@ ISSUES = {
             ("Daniel Oppenheim", "Construire et habiter l'espace du dialogue et de l'hospitalité"),                     # pl20-90-97
             ("Julien Cann", "Givat Haviva, un lieu de dialogue"),                                                        # pl20-98-104
         ],
+        "order": [10, 14, 1, 7, 8, 9, 11, 12, 13, 15, 16, 17, 18, 0, 2, 3, 4, 5, 6],
     },
     21: {
         "title": "La peur, hier et aujourd'hui",
@@ -605,6 +620,7 @@ ISSUES = {
             ("Lydie Decobert", "Les ressorts de la peur dans le cinéma d'Alfred Hitchcock"),                            # pl21-77-90
             ("Guido Furci", "La peur dans Badenheim 1939 d'Aharon Appelfeld"),                                          # pl21-91-100
         ],
+        "order": [11, 1, 6, 7, 8, 9, 10, 12, 13, 14, 0, 2, 3, 4, 5],
     },
     22: {
         "title": "Le Juif et l'Autre",
@@ -631,6 +647,7 @@ ISSUES = {
             ("Mireille Hadas-Lebel", "Les juifs dans le monde hellénistique romain"),                                   # pl22-8-14
             ("Philippe Zard", "Anatomie d'un embarras. En lisant la poésie politique de Mahmoud Darwich"),              # pl22-87-104
         ],
+        "order": [10, 16, 5, 7, 8, 9, 11, 12, 13, 14, 15, 17, 0, 1, 2, 3, 4, 6],
     },
     23: {
         "title": "Les Juifs dans la modernité",
@@ -698,13 +715,16 @@ PDF_FILES = {
 }
 
 # ─── Extract text from PDF ─────────────────────────────────────────────────────
-def extract_pdf_text(pdf_path, fix_char_spacing=False):
+def extract_pdf_text(pdf_path, fix_char_spacing=False, clip_bottom=0.86):
     """Extract clean text from a PDF, clipping away headers and footers.
 
     fix_char_spacing: only enable for older PDFs (issues 9, 10, 12, 22) where
     each letter was typeset as a separate text object, e.g. "i n c a r n e".
     The regex is restricted to runs of SINGLE letters to avoid merging normal
     short French words like "et le XXe siècle" into "etleXXesiècle".
+
+    clip_bottom: fraction of page height to clip at bottom (default 0.86).
+    Use 0.92 for issues 12, 16, 22 whose content reaches closer to the footer.
     """
     try:
         doc = fitz.open(str(pdf_path))
@@ -712,8 +732,8 @@ def extract_pdf_text(pdf_path, fix_char_spacing=False):
         for page in doc:
             ph = page.rect.height
             pw = page.rect.width
-            # Clip away the top 11% (running headers) and bottom 14% (footers/page numbers)
-            clip = fitz.Rect(0, ph * 0.11, pw, ph * 0.86)
+            # Clip away the top 11% (running headers) and bottom (footers/page numbers)
+            clip = fitz.Rect(0, ph * 0.11, pw, ph * clip_bottom)
             text = page.get_text("text", clip=clip)
             # Fix typographic ligatures → plain letters
             text = (text
@@ -2316,7 +2336,8 @@ def build():
             known_articles = info.get('articles', [])
 
             for i, pdf in enumerate(pdfs):
-                pages = extract_pdf_text(pdf, fix_char_spacing=(n in {9, 10, 12, 22}))
+                clip_bottom = 0.92 if n in {12, 16, 22} else 0.86
+                pages = extract_pdf_text(pdf, fix_char_spacing=(n in {9, 10, 12, 22}), clip_bottom=clip_bottom)
                 if not pages:
                     continue
                 full_text = '\n\n'.join(pages)
@@ -2358,13 +2379,20 @@ def build():
                 if include_in_sommaire:
                     pdf_articles.append((slug, title_candidate, author_candidate))
 
-            # Move editorial to front of sommaire display
-            editorial_idx = next(
-                (j for j, (_, t, _) in enumerate(pdf_articles) if 'éditorial' in t.lower()),
-                None
-            )
-            if editorial_idx is not None and editorial_idx > 0:
-                pdf_articles = [pdf_articles[editorial_idx]] + pdf_articles[:editorial_idx] + pdf_articles[editorial_idx+1:]
+            # Reorder sommaire using printing order from ISSUES dict (by page number)
+            order = info.get('order')
+            if order:
+                # 'order' maps printing position → index in string-sorted pdf_articles list.
+                # Only include indices that are actually within bounds.
+                pdf_articles = [pdf_articles[i] for i in order if i < len(pdf_articles)]
+            else:
+                # Fallback: move editorial to front
+                editorial_idx = next(
+                    (j for j, (_, t, _) in enumerate(pdf_articles) if 'éditorial' in t.lower()),
+                    None
+                )
+                if editorial_idx is not None and editorial_idx > 0:
+                    pdf_articles = [pdf_articles[editorial_idx]] + pdf_articles[:editorial_idx] + pdf_articles[editorial_idx+1:]
 
             # Generate issue index: clean sommaire using known ISSUES metadata
             articles_html = ""
