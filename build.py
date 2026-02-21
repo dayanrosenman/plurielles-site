@@ -1713,17 +1713,6 @@ def generate_homepage(all_issues):
   </div>
 </section>
 
-<section class="section">
-  <div class="section__inner">
-    <p class="section-label">Dernières parutions</p>
-    <h2 class="section-title">Numéros récents</h2>
-    <p class="section-desc">Découvrez les articles de Plurielles, accessibles en ligne dans leur intégralité.</p>
-    <div class="issues-grid">
-      {recent_cards}
-    </div>
-  </div>
-</section>
-
 <section class="section section--alt">
   <div class="section__inner">
     <div class="about-content">
@@ -1735,6 +1724,17 @@ def generate_homepage(all_issues):
         <a href="about.html" class="btn btn--primary">En savoir plus</a>
         <a href="comite.html" class="btn btn--outline" style="margin-left:0.75rem; color: var(--clr-dark); border-color: var(--clr-border);">Comité de rédaction</a>
       </p>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section__inner">
+    <p class="section-label">Dernières parutions</p>
+    <h2 class="section-title">Numéros récents</h2>
+    <p class="section-desc">Découvrez les articles de Plurielles, accessibles en ligne dans leur intégralité.</p>
+    <div class="issues-grid">
+      {recent_cards}
     </div>
   </div>
 </section>
