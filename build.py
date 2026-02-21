@@ -440,8 +440,14 @@ PDF_FILES = {
 }
 
 # ─── Extract text from PDF ─────────────────────────────────────────────────────
-def extract_pdf_text(pdf_path):
-    """Extract clean text from a PDF, clipping away headers and footers."""
+def extract_pdf_text(pdf_path, fix_char_spacing=False):
+    """Extract clean text from a PDF, clipping away headers and footers.
+
+    fix_char_spacing: only enable for older PDFs (issues 9, 10, 12, 22) where
+    each letter was typeset as a separate text object, e.g. "i n c a r n e".
+    The regex is restricted to runs of SINGLE letters to avoid merging normal
+    short French words like "et le XXe siècle" into "etleXXesiècle".
+    """
     try:
         doc = fitz.open(str(pdf_path))
         pages = []
@@ -463,13 +469,16 @@ def extract_pdf_text(pdf_path):
             )
             # Fix soft hyphenation: word- + newline + lowercase → join
             text = re.sub(r'-\n([a-zàâäéèêëîïôùûüœ])', r'\1', text)
-            # Fix character-spaced words (PDF artifact where each letter is a separate object)
-            # e.g. "i n c a r n e" → "incarne", "m a t e rn e l l e" → "maternelle"
-            text = re.sub(
-                r'(?<!\S)([A-Za-zÀ-ÿ]{1,3})( [A-Za-zÀ-ÿ]{1,3}){3,}',
-                lambda m: m.group(0).replace(' ', ''),
-                text
-            )
+            if fix_char_spacing:
+                # Collapse runs of single letters separated by spaces into one word.
+                # Only matches single-char groups (not 2-3 char tokens) to avoid
+                # accidentally joining distinct short words like "et le XXe".
+                # Requires ≥ 5 consecutive single letters to trigger (avoids false positives).
+                text = re.sub(
+                    r'(?<!\S)([A-Za-zÀ-ÿ])( [A-Za-zÀ-ÿ]){4,}',
+                    lambda m: m.group(0).replace(' ', ''),
+                    text
+                )
             pages.append(text)
         doc.close()
         return pages
@@ -499,7 +508,7 @@ def extract_docx_text(docx_path):
         return []
 
 
-def docx_paras_to_html(raw_paras):
+def docx_paras_to_html(raw_paras, title="", author=""):
     """Convert DOCX paragraph list to HTML, filtering boilerplate."""
     paragraphs = []
     for p in raw_paras:
@@ -510,8 +519,85 @@ def docx_paras_to_html(raw_paras):
         if len(s) < 4:
             continue
         paragraphs.append(s)
+    paragraphs = strip_article_header(paragraphs, title, author)
     # Run through the same footnote pipeline as PDF articles
     return paragraphs_to_html(paragraphs)
+
+
+def strip_article_header(paragraphs, title, author):
+    """Remove title/author prefix from the start of extracted article body.
+
+    PDF extraction often captures the article title and author name at the
+    top of the first page; text_to_paragraphs() then joins them with the
+    first sentence into paragraph 0.  DOCX files may have them as separate
+    leading paragraphs.
+
+    Strategy:
+      1. DOCX style – skip leading paragraphs that match the title or author.
+      2. PDF style – find the author name inside paragraph 0-2 (within the
+         first 200 chars) and strip everything up to and including it.
+    """
+    if not paragraphs:
+        return paragraphs
+
+    # Build lowercase search tokens from author and title
+    author_tokens = []
+    if author and author.strip():
+        a = author.strip()
+        author_tokens.append(a.lower())
+        parts = a.split()
+        if len(parts) > 1:
+            author_tokens.append(parts[-1].lower())   # last name alone
+
+    title_tokens = []
+    if title and title.strip():
+        t = title.strip()
+        prefix = t[:40].lower()
+        if len(prefix) > 10:
+            title_tokens.append(prefix)
+
+    all_tokens = author_tokens + title_tokens
+
+    # --- DOCX style: leading paragraphs that ARE the title / author ---
+    i = 0
+    while i < min(5, len(paragraphs)):
+        p_lower = paragraphs[i].strip().lower()
+        matched = False
+        for tok in all_tokens:
+            if not tok:
+                continue
+            # Para equals the token, or starts with it, or token starts with para
+            if (p_lower == tok
+                    or p_lower.startswith(tok[:30])
+                    or (len(p_lower) >= 10 and tok.startswith(p_lower[:30]))):
+                matched = True
+                break
+        if matched:
+            i += 1
+        else:
+            break
+
+    if i > 0:
+        return paragraphs[i:]
+
+    # --- PDF style: author name embedded early in paragraph 0-2 ---
+    for i, para in enumerate(paragraphs[:3]):
+        para_lower = para.lower()
+        for token in author_tokens:
+            if len(token) < 4:
+                continue
+            pos = para_lower.find(token)
+            if pos < 0 or pos > 200:
+                # Not found, or found deep in text (not a header)
+                continue
+            after = para[pos + len(token):].lstrip(' ,.:;—–-\n')
+            result = []
+            if len(after) > 25:
+                result.append(after)
+            result.extend(paragraphs[i + 1:])
+            return result if result else paragraphs[i + 1:]
+
+    return paragraphs
 
 
 def text_to_paragraphs(text):
@@ -1968,14 +2054,13 @@ def build():
             known_articles = info.get('articles', [])
 
             for i, pdf in enumerate(pdfs):
-                pages = extract_pdf_text(pdf)
+                pages = extract_pdf_text(pdf, fix_char_spacing=(n in {9, 10, 12, 22}))
                 if not pages:
                     continue
                 full_text = '\n\n'.join(pages)
                 paragraphs = text_to_paragraphs(full_text)
-                body_html = paragraphs_to_html(paragraphs)
 
-                # Use authoritative metadata from ISSUES dict when available
+                # Determine metadata before stripping so we can use it as signal
                 if i < len(known_articles):
                     known_author, known_title = known_articles[i]
                     title_candidate = known_title
@@ -1987,6 +2072,9 @@ def build():
                     title_candidate = f"Document supplémentaire {i - len(known_articles) + 1}"
                     author_candidate = ""
                     include_in_sommaire = False
+
+                paragraphs = strip_article_header(paragraphs, title_candidate, author_candidate)
+                body_html = paragraphs_to_html(paragraphs)
 
                 # Generate slug from PDF filename
                 slug = pdf.stem.replace(' ', '-').lower()
@@ -2113,6 +2201,7 @@ def build():
         pages = extract_pdf_text(pdf)
         full_text = '\n\n'.join(pages)
         paragraphs = text_to_paragraphs(full_text)
+        paragraphs = strip_article_header(paragraphs, title, author)
         body_html = paragraphs_to_html(paragraphs)
 
         prev_slug = articles23[idx-1][1] if idx > 0 else ""
@@ -2268,7 +2357,7 @@ def build():
             print(f"    ⚠ Missing: {docx_path.name}")
             continue
         raw_paras = extract_docx_text(docx_path)
-        body_html = docx_paras_to_html(raw_paras)
+        body_html = docx_paras_to_html(raw_paras, title, author)
         prev_slug = PL24_ARTICLES_LIST[idx - 1][0] if idx > 0 else ""
         next_slug = PL24_ARTICLES_LIST[idx + 1][0] if idx < len(PL24_ARTICLES_LIST) - 1 else ""
         art_html = generate_article_page(
