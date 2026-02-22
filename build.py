@@ -1067,6 +1067,28 @@ def text_to_paragraphs(text):
 # ── Footnote token regex (matches \x01N\x02 markers inserted by text_to_paragraphs)
 _FN_TOK = re.compile(r'\x01(\d{1,2})\x02')
 
+# ── Inline footnote ref regex ────────────────────────────────────────────────
+# Matches 1- or 2-digit number directly attached to a word character, closing
+# punctuation, guillemet, quote, or NBSP — followed by whitespace / punct / end.
+# Used in render_para to detect superscript references in extracted PDF text.
+_INLINE_REF = re.compile(
+    # lookbehind: must follow a letter, French letter, guillemet, quote, bracket, or NBSP
+    r'(?<=[a-zA-ZàâäéèêëîïôùûüœÀ-ÿ»\xbb\xab\"\'\)\]\xa0])'
+    # group 1: 1 or 2 digit footnote number (directly attached to preceding char)
+    r'([1-9][0-9]?)'
+    r'(?=[\s\u00a0,;:.!?»\'\"\)\]\n]|$)'
+)
+
+# Separate pattern for "word.N" style refs (period between word and footnote number).
+# Uses a 2-character lookbehind so that single-letter abbreviations like "p.", "n."
+# do NOT match (preventing false positives for page references like "p.1", "p.2").
+# Example: "renouvellement.2" → matches; "p.2" → does NOT match.
+_INLINE_REF_PERIOD = re.compile(
+    r'(?<=[a-zA-ZàâäéèêëîïôùûüœÀ-ÿ\xa0][a-zA-ZàâäéèêëîïôùûüœÀ-ÿ\xa0])'
+    r'\.([1-9][0-9]?)'
+    r'(?=[\s\u00a0,;:.!?»\'\"\)\]\n]|$)'
+)
+
 # Footnote number prefix at start of string.
 # Two alternatives:
 #   "N." (with dot) + optional whitespace + any non-whitespace char — allows
@@ -1079,6 +1101,8 @@ _FN_NUM_PREFIX = re.compile(
     r'\.\s*(?=\S)'                   # "N." followed by any non-whitespace
     r'|'
     r'\s{1,3}(?=[A-ZÀ-Û«\"\'\(\[])' # "N " followed by uppercase / opening punct
+    r'|'
+    r'(?=[A-ZÀ-Û][a-záàâäéèêëîïôùûüœ.,])'  # "NW.Benjamin" compact (uppercase+lowercase/punct)
     r')'
 )
 
@@ -1094,7 +1118,7 @@ _NOTES_HEADER = re.compile(r'^NOTES?\s*$', re.I)
 # Mirrors _FN_NUM_PREFIX: split after sentence-ending punct before a footnote-number.
 _FN_SPLIT = re.compile(
     r'(?<=[.!?»\'\"\)\]])\s+'
-    r'(?=\d{1,2}(?:\.\s*\S|\s{1,3}[A-ZÀ-Û«\"\'\(\[]))'
+    r'(?=\d{1,2}(?:\.\s*\S|\s{1,3}[A-ZÀ-Û«\"\'\(\[]|[A-ZÀ-Û][a-záàâäéèêëîïôùûüœ.,]))'
 )
 
 def _split_fn_block(text):
@@ -1121,10 +1145,13 @@ _FN_REF = re.compile(
 
 # Case C split pattern: body text with footnote appended after sentence-ending punct.
 # Mirrors _FN_NUM_PREFIX alternatives.
+# NOTE: \s+ (not \s*) — we require at least one space before the footnote number to
+# avoid falsely matching inline refs like "mot.2 Phrase suivante" where the period is
+# part of the word and there is no typographic space before the superscript digit.
 _FN_CASE_C = re.compile(
-    r'(?<=[.!?»\'\"\)\]])\s*'
+    r'(?<=[.!?»\'\"\)\]])\s+'
     r'(\d{1,2})'
-    r'(?:\.\s*(?=\S)|\s{1,3}(?=[A-ZÀ-Û«\"\'\(\[]))'
+    r'(?:\.\s*(?=\S)|\s{1,3}(?=[A-ZÀ-Û«\"\'\(\[])|(?=[A-ZÀ-Û][a-záàâäéèêëîïôùûüœ.,]))'
 )
 
 
@@ -1239,6 +1266,127 @@ def detect_footnotes(paragraphs):
     return body, footnotes
 
 
+def pdf_pages_to_html(pages, title="", author=""):
+    """Convert a list of per-page PDF text strings to article HTML.
+
+    Unlike the simple `paragraphs_to_html(text_to_paragraphs('\n\n'.join(pages)))`,
+    this function processes each page **separately** so that per-page footnote
+    numbering (footnotes that reset to 1 on each new page) is handled correctly.
+
+    Algorithm:
+      1. For each page, run text_to_paragraphs + detect_footnotes independently.
+      2. Build a local→global ID mapping by merging per-page footnotes into a
+         single global dict using the same collision-detection logic as
+         _add_footnotes (same ID + same text → same global ID; same ID + different
+         text → assign next sequential global ID).
+      3. Renumber \\x01N\\x02 markers in that page's body paragraphs.
+      4. Render each body paragraph using _INLINE_REF with the per-page mapping,
+         so `»1.` on page 3 links to the correct global footnote, not page 1's fn-1.
+      5. Strip the article header only from the first page's paragraphs.
+    """
+    global_fns = {}      # global_id → text
+    _next_fn = [0]       # mutable sequential counter
+
+    def _add_page_fns(page_fns):
+        """Merge page_fns into global_fns; return local→global ID mapping."""
+        mapping = {}
+        for num, text in sorted(page_fns.items()):
+            norm = text.rstrip('.').strip()
+            if num not in global_fns:
+                global_fns[num] = text
+                if num > _next_fn[0]:
+                    _next_fn[0] = num
+                mapping[num] = num
+            elif global_fns[num].rstrip('.').strip() != norm:
+                # Per-page reset: same local number, different text → new global ID
+                _next_fn[0] += 1
+                global_fns[_next_fn[0]] = text
+                mapping[num] = _next_fn[0]
+            else:
+                mapping[num] = num  # same text, same global ID
+        return mapping
+
+    # ── Phase 1: detect footnotes per page, build mappings ───────────────────
+    page_data = []   # list of (body_paras, local→global mapping)
+    first_page = True
+    for page_text in pages:
+        page_paras = text_to_paragraphs(page_text)
+        if not page_paras:
+            continue
+        if first_page:
+            page_paras = strip_article_header(page_paras, title, author)
+            first_page = False
+        page_body, page_fns = detect_footnotes(page_paras)
+        mapping = _add_page_fns(page_fns)
+        page_data.append((page_body, mapping))
+
+    # ── Phase 2: render body paragraphs with per-page ref mapping ─────────────
+    used_ref_ids = set()
+
+    def make_sup(global_n):
+        if global_n not in global_fns:
+            return ''
+        ref_id = f'ref-{global_n}'
+        id_attr = f' id="{ref_id}"' if ref_id not in used_ref_ids else ''
+        used_ref_ids.add(ref_id)
+        return f'<sup class="fn-ref"{id_attr}><a href="#fn-{global_n}">{global_n}</a></sup>'
+
+    html_parts = []
+    for page_body, mapping in page_data:
+        for p in page_body:
+            if not p:
+                continue
+            # Renumber \x01local\x02 markers → \x01global\x02
+            p = re.sub(
+                r'\x01(\d+)\x02',
+                lambda m, mp=mapping: f'\x01{mp.get(int(m.group(1)), int(m.group(1)))}\x02',
+                p
+            )
+            # HTML escape
+            p_html = p.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+            # Render \x01global\x02 markers as <sup> links
+            p_html = _FN_TOK.sub(lambda m: make_sup(int(m.group(1))), p_html)
+            # Apply inline-ref detection with per-page local→global mapping.
+            # First handle "word.N" (period-style), then "wordN" (direct-attach).
+            def sub_ref(m, mp=mapping):
+                """For _INLINE_REF: group(1) = digit(s) directly after letter/quote."""
+                local_n = int(m.group(1))
+                global_n = mp.get(local_n)
+                if global_n is None:
+                    if local_n in global_fns:
+                        return make_sup(local_n)
+                    return m.group(0)
+                return make_sup(global_n)
+            def sub_ref_period(m, mp=mapping):
+                """For _INLINE_REF_PERIOD: group(1) = digit; match includes '.' prefix."""
+                local_n = int(m.group(1))
+                global_n = mp.get(local_n)
+                if global_n is None:
+                    if local_n in global_fns:
+                        return '.' + make_sup(local_n)
+                    return m.group(0)
+                return '.' + make_sup(global_n)
+            p_html = _INLINE_REF_PERIOD.sub(sub_ref_period, p_html)
+            p_html = _INLINE_REF.sub(sub_ref, p_html)
+            html_parts.append(f'<p>{p_html}</p>')
+
+    # ── Footnote list ─────────────────────────────────────────────────────────
+    if global_fns:
+        html_parts.append('<hr class="fn-rule">')
+        html_parts.append('<ol class="footnotes">')
+        for n in sorted(global_fns.keys()):
+            text = (global_fns[n]
+                    .replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;'))
+            html_parts.append(
+                f'<li id="fn-{n}" class="footnote">'
+                f'<a href="#ref-{n}" class="fn-back" title="Retour au texte">↩</a> '
+                f'{text}</li>'
+            )
+        html_parts.append('</ol>')
+
+    return '\n'.join(html_parts)
+
+
 def paragraphs_to_html(paragraphs, prebuilt_footnotes=None):
     """Convert list of paragraphs to HTML, extracting and linking footnotes.
 
@@ -1265,27 +1413,25 @@ def paragraphs_to_html(paragraphs, prebuilt_footnotes=None):
         used_ref_ids.add(ref_id)
         return f'<sup class="fn-ref"{id_attr}><a href="#fn-{n}">{n}</a></sup>'
 
-    # Inline ref pattern for use inside render_para (applied after HTML escaping).
-    # Matches a digit 1-9 that appears directly after word chars, closing punct,
-    # guillemets, quotes, or non-breaking space — but only if that digit is a known
-    # footnote number. Uses a lookahead to require space/punct/end after the digit.
-    _inline_ref = re.compile(
-        r'(?<=[a-zA-ZàâäéèêëîïôùûüœÀ-ÿ»\xbb\xab\"\'\)\]\xa0])([1-9])'
-        r'(?=[\s\u00a0,;:.!?»\'\"\)\]\n]|$)'
-    )
-
     def render_para(p):
         # Escape HTML first (tokens are not HTML-special chars)
         p = p.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
         # Replace \x01N\x02 tokens with <sup> links
         p = _FN_TOK.sub(lambda m: make_sup(int(m.group(1))), p)
-        # Replace inline ref digits (attached to word/punct) when they are known footnotes
+        # Replace inline ref digits when they are known footnotes.
+        # First handle "word.N" (period-style), then "wordN" (direct-attach).
+        def sub_ref_period(m):
+            n = int(m.group(1))
+            if n in footnotes:
+                return '.' + make_sup(n)
+            return m.group(0)
         def sub_ref(m):
             n = int(m.group(1))
             if n in footnotes:
                 return make_sup(n)
             return m.group(0)
-        p = _inline_ref.sub(sub_ref, p)
+        p = _INLINE_REF_PERIOD.sub(sub_ref_period, p)
+        p = _INLINE_REF.sub(sub_ref, p)
         return f'<p>{p}</p>'
 
     html_parts = [render_para(p) for p in body_paras if p]
@@ -2571,9 +2717,6 @@ def build():
                 pages = extract_pdf_text(pdf, fix_char_spacing=(n in {9, 10, 12, 22}), clip_bottom=clip_bottom)
                 if not pages:
                     continue
-                full_text = '\n\n'.join(pages)
-                paragraphs = text_to_paragraphs(full_text)
-
                 # Determine metadata before stripping so we can use it as signal
                 if i < len(known_articles):
                     known_author, known_title = known_articles[i]
@@ -2587,8 +2730,7 @@ def build():
                     author_candidate = ""
                     include_in_sommaire = False
 
-                paragraphs = strip_article_header(paragraphs, title_candidate, author_candidate)
-                body_html = paragraphs_to_html(paragraphs)
+                body_html = pdf_pages_to_html(pages, title_candidate, author_candidate)
 
                 # Generate slug from PDF filename
                 slug = pdf.stem.replace(' ', '-').lower()
@@ -2733,10 +2875,7 @@ def build():
             author, title = PL23_ARTICLES[num]
 
         pages = extract_pdf_text(pdf)
-        full_text = '\n\n'.join(pages)
-        paragraphs = text_to_paragraphs(full_text)
-        paragraphs = strip_article_header(paragraphs, title, author)
-        body_html = paragraphs_to_html(paragraphs)
+        body_html = pdf_pages_to_html(pages, title, author)
 
         prev_slug = articles23[idx-1][1] if idx > 0 else ""
         next_slug = articles23[idx+1][1] if idx < len(articles23)-1 else ""
