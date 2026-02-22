@@ -766,40 +766,87 @@ def extract_pdf_text(pdf_path, fix_char_spacing=False, clip_bottom=0.86):
 
 
 def extract_docx_text(docx_path):
-    """Extract paragraph texts from a DOCX file as a list of strings."""
+    """Extract paragraph texts and footnotes from a DOCX file.
+
+    Returns (paras, footnotes_dict) where:
+      paras: list of paragraph strings; body paragraphs contain \\x01N\\x02
+        markers at the positions of footnote references.
+      footnotes_dict: {int -> str} mapping footnote number to footnote text,
+        read from word/footnotes.xml.  Empty dict if no footnotes.xml found.
+    """
     _W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'
     try:
         with zipfile.ZipFile(str(docx_path)) as z:
             with z.open('word/document.xml') as f:
-                tree = ET.parse(f)
+                doc_tree = ET.parse(f)
+
+            # ── Read footnotes.xml ───────────────────────────────────────────
+            footnote_texts = {}
+            if 'word/footnotes.xml' in z.namelist():
+                with z.open('word/footnotes.xml') as f:
+                    fn_tree = ET.parse(f)
+                for fn in fn_tree.findall(f'.//{{{_W}}}footnote'):
+                    fn_type = fn.get(f'{{{_W}}}type', '')
+                    if fn_type in ('separator', 'continuationSeparator', 'continuationNotice'):
+                        continue
+                    fn_id_str = fn.get(f'{{{_W}}}id', '')
+                    try:
+                        fn_id = int(fn_id_str)
+                    except ValueError:
+                        continue
+                    if fn_id <= 0:
+                        continue
+                    text = ''.join(
+                        t.text or ''
+                        for t in fn.findall(f'.//{{{_W}}}t')
+                    ).strip()
+                    if text:
+                        footnote_texts[fn_id] = text
+
+        # ── Read body paragraphs, inserting \x01N\x02 at fn-ref positions ───
         paras = []
-        for p in tree.findall(f'.//{{{_W}}}p'):
-            # Collect all text runs, including those inside hyperlinks
-            text = ''.join(
-                t.text or ''
-                for t in p.findall(f'.//{{{_W}}}t')
-            )
-            paras.append(text)
-        return paras
+        for p in doc_tree.findall(f'.//{{{_W}}}p'):
+            parts = []
+            for child in p.iter():
+                if child.tag == f'{{{_W}}}t':
+                    parts.append(child.text or '')
+                elif child.tag == f'{{{_W}}}footnoteReference':
+                    fn_id_str = child.get(f'{{{_W}}}id', '')
+                    try:
+                        fn_id = int(fn_id_str)
+                        if fn_id > 0:
+                            parts.append(f'\x01{fn_id}\x02')
+                    except ValueError:
+                        pass
+            paras.append(''.join(parts))
+
+        return paras, footnote_texts
+
     except Exception as e:
         print(f"  Error reading {docx_path}: {e}")
-        return []
+        return [], {}
 
 
-def docx_paras_to_html(raw_paras, title="", author=""):
-    """Convert DOCX paragraph list to HTML, filtering boilerplate."""
+def docx_paras_to_html(raw_paras, title="", author="", footnotes=None):
+    """Convert DOCX paragraph list to HTML, filtering boilerplate.
+
+    footnotes: pre-extracted {int->str} dict from extract_docx_text.  When
+    provided, the pipeline uses this dict directly (bypassing detect_footnotes)
+    so DOCX markers (\\x01N\\x02) are rendered as inline <sup> links without
+    mis-parsing body text as footnote text.
+    """
     paragraphs = []
     for p in raw_paras:
         s = p.strip()
         if not s:
             continue
-        # Skip very short lines (likely headers/footers/page numbers)
-        if len(s) < 4:
+        # Skip very short lines (page numbers etc.) but keep paragraphs that
+        # contain footnote markers even if otherwise short.
+        if len(s) < 4 and not _FN_TOK.search(s):
             continue
         paragraphs.append(s)
     paragraphs = strip_article_header(paragraphs, title, author)
-    # Run through the same footnote pipeline as PDF articles
-    return paragraphs_to_html(paragraphs)
+    return paragraphs_to_html(paragraphs, prebuilt_footnotes=footnotes)
 
 
 def strip_article_header(paragraphs, title, author):
@@ -830,24 +877,36 @@ def strip_article_header(paragraphs, title, author):
     title_tokens = []
     if title and title.strip():
         t = title.strip()
+        # Add first 40 chars of the full title as primary token
         prefix = t[:40].lower()
         if len(prefix) > 10:
             title_tokens.append(prefix)
+        # Also add each ' — '-separated part (subtitle etc.) as its own token,
+        # so that multi-line DOCX titles (split by em-dash) are fully stripped.
+        for part in t.split(' — '):
+            part_lower = part.strip().lower()
+            if len(part_lower) > 10 and part_lower[:40] not in title_tokens:
+                title_tokens.append(part_lower[:40])
 
     all_tokens = author_tokens + title_tokens
 
+    def _norm(s):
+        """Normalize whitespace variants (NBSP, narrow NBSP, etc.) to ASCII space."""
+        return s.replace('\xa0', ' ').replace('\u202f', ' ').replace('\u2009', ' ')
+
     # --- DOCX style: leading paragraphs that ARE the title / author ---
     i = 0
-    while i < min(5, len(paragraphs)):
-        p_lower = paragraphs[i].strip().lower()
+    while i < min(6, len(paragraphs)):
+        p_lower = _norm(paragraphs[i].strip().lower())
         matched = False
         for tok in all_tokens:
             if not tok:
                 continue
+            tok_n = _norm(tok)
             # Para equals the token, or starts with it, or token starts with para
-            if (p_lower == tok
-                    or p_lower.startswith(tok[:30])
-                    or (len(p_lower) >= 10 and tok.startswith(p_lower[:30]))):
+            if (p_lower == tok_n
+                    or p_lower.startswith(tok_n[:30])
+                    or (len(p_lower) >= 10 and tok_n.startswith(p_lower[:30]))):
                 matched = True
                 break
         if matched:
@@ -957,9 +1016,20 @@ def text_to_paragraphs(text):
 # ── Footnote token regex (matches \x01N\x02 markers inserted by text_to_paragraphs)
 _FN_TOK = re.compile(r'\x01(\d{1,2})\x02')
 
-# Footnote number prefix: "N." or "N. " or "N  " at start of string (N=1..25)
-# Accepts both "1. Text" (with dot) and "1 Text" (without dot, for older issues)
-_FN_NUM_PREFIX = re.compile(r'^(\d{1,2})\.?\s{1,3}(?=[A-ZÀ-Û«\"\'\(\[])')
+# Footnote number prefix at start of string.
+# Two alternatives:
+#   "N." (with dot) + optional whitespace + any non-whitespace char — allows
+#     URLs and lowercase text (used in DOCX-sourced footnotes like "1. https://...")
+#   "N " (no dot) + 1-3 spaces + uppercase or opening punct — PDF style, requires
+#     uppercase to avoid false positives like "3 mois plus tard".
+_FN_NUM_PREFIX = re.compile(
+    r'^(\d{1,2})'
+    r'(?:'
+    r'\.\s*(?=\S)'                   # "N." followed by any non-whitespace
+    r'|'
+    r'\s{1,3}(?=[A-ZÀ-Û«\"\'\(\[])' # "N " followed by uppercase / opening punct
+    r')'
+)
 
 # A paragraph IS a footnote block if it starts with a footnote number prefix
 # and is at least 10 chars (to avoid matching isolated page numbers or short artefacts)
@@ -970,10 +1040,10 @@ def _is_fn_para(para):
 _NOTES_HEADER = re.compile(r'^NOTES?\s*$', re.I)
 
 # Split a multi-footnote block into individual footnotes.
-# Handles both "N. Text" and "N Text" separators between footnotes.
+# Mirrors _FN_NUM_PREFIX: split after sentence-ending punct before a footnote-number.
 _FN_SPLIT = re.compile(
-    r'(?<=[.!?»\'\"\)\]])\s+'          # after sentence-ending punctuation
-    r'(?=\d{1,2}\.?\s{1,3}[A-ZÀ-Û«\"\'\(\[])'  # before "N. Capital" or "N Capital"
+    r'(?<=[.!?»\'\"\)\]])\s+'
+    r'(?=\d{1,2}(?:\.\s*\S|\s{1,3}[A-ZÀ-Û«\"\'\(\[]))'
 )
 
 def _split_fn_block(text):
@@ -998,11 +1068,12 @@ _FN_REF = re.compile(
     r'(?=[\s,;.!?»\'\")\]\n]|$)'
 )
 
-# Case C split pattern: body text with footnote appended after sentence-ending punct
-# "…body sentence. 1. Footnote text…" or "…body sentence. 1 Footnote…"
+# Case C split pattern: body text with footnote appended after sentence-ending punct.
+# Mirrors _FN_NUM_PREFIX alternatives.
 _FN_CASE_C = re.compile(
     r'(?<=[.!?»\'\"\)\]])\s*'
-    r'(\d{1,2})\.?\s{1,3}(?=[A-ZÀ-Û«\"\'\(\[])'
+    r'(\d{1,2})'
+    r'(?:\.\s*(?=\S)|\s{1,3}(?=[A-ZÀ-Û«\"\'\(\[]))'
 )
 
 
@@ -1117,9 +1188,20 @@ def detect_footnotes(paragraphs):
     return body, footnotes
 
 
-def paragraphs_to_html(paragraphs):
-    """Convert list of paragraphs to HTML, extracting and linking footnotes."""
-    body_paras, footnotes = detect_footnotes(paragraphs)
+def paragraphs_to_html(paragraphs, prebuilt_footnotes=None):
+    """Convert list of paragraphs to HTML, extracting and linking footnotes.
+
+    prebuilt_footnotes: when provided (DOCX path), use this dict directly and
+    skip detect_footnotes.  Body paragraphs may still contain \\x01N\\x02
+    markers which render_para converts to <sup> links.
+    """
+    if prebuilt_footnotes is not None:
+        # DOCX mode: footnotes pre-extracted from XML; body may have \x01N\x02 markers.
+        # Just strip NOTES headers; don't run heuristic footnote detection.
+        body_paras = [p for p in paragraphs if p and not _NOTES_HEADER.match(p)]
+        footnotes = prebuilt_footnotes
+    else:
+        body_paras, footnotes = detect_footnotes(paragraphs)
 
     # Track which ref IDs have been used (first occurrence gets the anchor, rest are plain links)
     used_ref_ids = set()
@@ -2755,8 +2837,8 @@ def build():
         if not docx_path.exists():
             print(f"    ⚠ Missing: {docx_path.name}")
             continue
-        raw_paras = extract_docx_text(docx_path)
-        body_html = docx_paras_to_html(raw_paras, title, author)
+        raw_paras, fn_dict = extract_docx_text(docx_path)
+        body_html = docx_paras_to_html(raw_paras, title, author, footnotes=fn_dict or None)
         prev_slug = PL24_ARTICLES_LIST[idx - 1][0] if idx > 0 else ""
         next_slug = PL24_ARTICLES_LIST[idx + 1][0] if idx < len(PL24_ARTICLES_LIST) - 1 else ""
         art_html = generate_article_page(
