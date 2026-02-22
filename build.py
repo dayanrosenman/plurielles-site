@@ -2378,7 +2378,7 @@ a.fn-back:hover { color: var(--clr-primary); }
 
 
 # ─── HTML Helpers ─────────────────────────────────────────────────────────────
-_SITE_BASE_URL = "https://dayanrosenman.github.io/plurielles-site"
+_SITE_BASE_URL = "https://www.revueplurielles.fr"
 _SITE_DEFAULT_DESC = ("Plurielles est une revue semestrielle de culture juive "
                       "laïque et humaniste, publiée par l'AJHL depuis 1993.")
 
