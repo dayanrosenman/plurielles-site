@@ -956,95 +956,163 @@ def text_to_paragraphs(text):
 
 # ── Footnote token regex (matches \x01N\x02 markers inserted by text_to_paragraphs)
 _FN_TOK = re.compile(r'\x01(\d{1,2})\x02')
-# Paragraph that IS a footnote block: "N Some text..." (no dot after number = not section heading)
-# Limit to footnote numbers ≤ 25 to avoid false positives with page numbers
-_FN_PARA = re.compile(r'^([1-9]|1\d|2[0-5])(?!\s*[.:])\s+(?=[A-ZÀ-Û«\"\'])')
-# Embedded footnote after sentence-ending punctuation or hyphen: "...word. 2 Footnote..."
-# Require punctuation before the number to avoid "chapitre 3 La méthode" false positives
-_FN_EMBED = re.compile(
-    r'(?<=[.!?»,;\'\"\)\-])\s+([1-9]|1\d|2[0-5])\s+(?=[A-ZÀ-Û«\"\'])'
-)
-# Inline footnote ref in body: word-char immediately followed by single digit
-_FN_REF = re.compile(r'(?<=[a-zA-ZàâäéèêëîïôùûüœÀ-ÿ])([1-9])(?=[\s,;.!?»\'\")\]]|$)')
 
+# Footnote number prefix: "N." or "N. " or "N  " at start of string (N=1..25)
+# Accepts both "1. Text" (with dot) and "1 Text" (without dot, for older issues)
+_FN_NUM_PREFIX = re.compile(r'^(\d{1,2})\.?\s{1,3}(?=[A-ZÀ-Û«\"\'\(\[])')
+
+# A paragraph IS a footnote block if it starts with a footnote number prefix
+# and is at least 10 chars (to avoid matching isolated page numbers or short artefacts)
+def _is_fn_para(para):
+    return bool(_FN_NUM_PREFIX.match(para)) and len(para) >= 10
+
+# A "NOTES" header line — strip it, don't emit to body
+_NOTES_HEADER = re.compile(r'^NOTES?\s*$', re.I)
+
+# Split a multi-footnote block into individual footnotes.
+# Handles both "N. Text" and "N Text" separators between footnotes.
+_FN_SPLIT = re.compile(
+    r'(?<=[.!?»\'\"\)\]])\s+'          # after sentence-ending punctuation
+    r'(?=\d{1,2}\.?\s{1,3}[A-ZÀ-Û«\"\'\(\[])'  # before "N. Capital" or "N Capital"
+)
 
 def _split_fn_block(text):
     """Parse a string of one or more footnotes into {num: text} dict."""
-    # Split at boundaries like "...sentence end. 2 Next footnote"
-    parts = re.split(r'(?<=[.!?»\'\")\]])\s+(?=\d{1,2}\s+[A-ZÀ-Û«\"\'])', text)
+    parts = _FN_SPLIT.split(text)
     result = {}
     for part in parts:
-        m = re.match(r'^(\d{1,2})\s+(.+)', part, re.DOTALL)
+        part = part.strip()
+        m = _FN_NUM_PREFIX.match(part)
         if m:
-            result[int(m.group(1))] = m.group(2).strip()
+            num = int(m.group(1))
+            content = part[m.end():].strip()
+            if content:
+                result[num] = content
     return result
+
+# Inline footnote ref in body text: word/punct followed by a superscript-style digit.
+# Matches: "word1" "»1" "pays1." "texte1," etc.
+# Limited to digits 1-9 only (two-digit inline refs are rare and risky to auto-detect).
+_FN_REF = re.compile(
+    r'(?<=[a-zA-ZàâäéèêëîïôùûüœÀ-ÿ»\"\'\)\]])([1-9])'
+    r'(?=[\s,;.!?»\'\")\]\n]|$)'
+)
+
+# Case C split pattern: body text with footnote appended after sentence-ending punct
+# "…body sentence. 1. Footnote text…" or "…body sentence. 1 Footnote…"
+_FN_CASE_C = re.compile(
+    r'(?<=[.!?»\'\"\)\]])\s*'
+    r'(\d{1,2})\.?\s{1,3}(?=[A-ZÀ-Û«\"\'\(\[])'
+)
 
 
 def detect_footnotes(paragraphs):
     """
-    Scan paragraphs for footnote text and inline markers.
-    Returns (body_paragraphs, footnotes_dict) where body_paragraphs still contain
-    \x01N\x02 tokens at reference positions, and footnotes_dict maps int→str.
+    Scan paragraphs for footnote text and inline reference markers.
+
+    Strategy:
+      1. Strip any "NOTES" header paragraphs.
+      2. Paragraphs that begin with "N." or "N " (footnote number prefix) are
+         footnote blocks — extract them into footnotes dict.
+      3. Paragraphs containing body text that ends with an inline ref digit
+         (e.g. "…word1") have the ref extracted and replaced with a \x01N\x02 token.
+      4. Paragraphs that contain \x01N\x02 tokens (isolated digit lines) are
+         split: the token marks the boundary between body and footnote text if
+         what follows starts with an uppercase letter.
+      5. Multi-footnote blocks (several footnotes in one paragraph) are split
+         by _split_fn_block().
+
+    Footnotes that reset to 1 on each page (per-page numbering) are handled by
+    renumbering: if footnote number N already exists in the dict with different
+    text, we assign a new sequential number (continuing from the last used).
+
+    Returns (body_paragraphs, footnotes_dict) where body paragraphs still contain
+    \x01N\x02 tokens at inline-ref positions, and footnotes_dict maps int→str.
     """
     body = []
-    footnotes = {}
+    footnotes = {}         # final merged dict: sequential int → text
+    _next_fn = [0]         # mutable counter for renumbering per-page footnotes
+
+    def _add_footnotes(new_fns):
+        """Merge new_fns into footnotes, renumbering on collision."""
+        for num, text in sorted(new_fns.items()):
+            if num not in footnotes:
+                footnotes[num] = text
+                if num > _next_fn[0]:
+                    _next_fn[0] = num
+            elif footnotes[num].rstrip('.').strip() != text.rstrip('.').strip():
+                # Same number, different text → per-page reset, renumber
+                _next_fn[0] += 1
+                footnotes[_next_fn[0]] = text
+
+    # ── Collect body paragraphs ───────────────────────────────────────────────
+    raw_body = []
 
     for para in paragraphs:
-        # Case 1: whole paragraph is footnote text
-        if _FN_PARA.match(para) and len(para) > 25:
-            footnotes.update(_split_fn_block(para))
+        # Drop "NOTES" / "NOTE" header lines
+        if _NOTES_HEADER.match(para):
             continue
 
-        # Case 2: paragraph contains \x01N\x02 tokens from isolated digit lines
+        # Case A: paragraph IS a footnote block (starts with "N." or "N ")
+        if _is_fn_para(para):
+            new_fns = _split_fn_block(para)
+            _add_footnotes(new_fns)
+            continue
+
+        # Case B: paragraph contains \x01N\x02 tokens inserted by text_to_paragraphs
         if _FN_TOK.search(para):
-            # Walk through chunks: [text, fn_num, text, fn_num, text, ...]
             chunks = _FN_TOK.split(para)
             body_buf = chunks[0]
             i = 1
             while i < len(chunks):
                 fn_num = int(chunks[i])
                 after = chunks[i + 1] if i + 1 < len(chunks) else ''
-                after_stripped = after.lstrip()
-                # Is what follows footnote text (starts with capital) or body continuation?
-                if after_stripped and after_stripped[0].isupper() and len(after_stripped) > 20:
-                    # Footnote starts here — save body up to this point with ref marker
+                after_s = after.lstrip()
+                # Is what follows uppercase and substantial? → footnote text
+                if after_s and (after_s[0].isupper() or after_s[0] in '«\"\'(') and len(after_s) > 15:
                     body_buf = body_buf.rstrip() + f'\x01{fn_num}\x02'
-                    # Parse footnote text (may contain further tokens/footnotes)
-                    fn_raw = str(fn_num) + ' ' + after_stripped
-                    footnotes.update(_split_fn_block(fn_raw))
-                    body_buf_remaining = ''
+                    fn_raw = str(fn_num) + '. ' + after_s
+                    _add_footnotes(_split_fn_block(fn_raw))
                     i += 2
-                    # Absorb any remaining chunks as more footnote text
+                    # Absorb any additional fn tokens in same paragraph
                     while i < len(chunks):
                         fn_num2 = int(chunks[i])
-                        after2 = chunks[i + 1] if i + 1 < len(chunks) else ''
-                        after2s = after2.lstrip()
-                        fn_raw2 = str(fn_num2) + ' ' + after2s
-                        footnotes.update(_split_fn_block(fn_raw2))
+                        after2 = (chunks[i + 1] if i + 1 < len(chunks) else '').lstrip()
+                        fn_raw2 = str(fn_num2) + '. ' + after2
+                        _add_footnotes(_split_fn_block(fn_raw2))
                         i += 2
                     break
                 else:
-                    # Inline reference only — keep token in body text
+                    # Inline reference only — keep token in body
                     body_buf += f'\x01{fn_num}\x02' + after
                     i += 2
-
             if body_buf.strip():
-                body.append(body_buf.strip())
+                raw_body.append(body_buf.strip())
             continue
 
-        # Case 3: embedded footnote text with no token (number ran together with prev line)
-        m = _FN_EMBED.search(para)
+        # Case C: body text has footnote text appended after a sentence end
+        # Pattern: "…body sentence. 1. Footnote text…" or "…body. 1 Footnote…"
+        m = _FN_CASE_C.search(para)
         if m:
-            body_part = para[:m.start()].strip()
-            fn_num_str = m.group(1)
-            fn_part = para[m.start():].strip()  # "N Footnote text..."
-            if body_part:
-                body.append(body_part)
-            if fn_part:
-                footnotes.update(_split_fn_block(fn_part))
-            continue
+            fn_start_num = int(m.group(1))
+            if fn_start_num <= 25:
+                body_part = para[:m.start()].strip()
+                fn_part = para[m.start():].strip()
+                new_fns = _split_fn_block(fn_part)
+                if new_fns:
+                    if body_part:
+                        raw_body.append(body_part)
+                    _add_footnotes(new_fns)
+                    continue
 
-        body.append(para)
+        # Case D: body text ends with an inline ref digit but no footnote text follows
+        # e.g. "…pays1." or "»1" at end — keep in body for later ref-linking
+        raw_body.append(para)
+
+    # ── Pass 2: render body paragraphs, converting inline digit refs ──────────
+    # Now we know which numbers are in footnotes; use that to decide whether
+    # a trailing digit is a ref marker.
+    body = raw_body  # keep as-is; paragraphs_to_html will handle inline ref sub
 
     return body, footnotes
 
@@ -1062,18 +1130,27 @@ def paragraphs_to_html(paragraphs):
         used_ref_ids.add(ref_id)
         return f'<sup class="fn-ref"{id_attr}><a href="#fn-{n}">{n}</a></sup>'
 
+    # Inline ref pattern for use inside render_para (applied after HTML escaping).
+    # Matches a digit 1-9 that appears directly after word chars, closing punct,
+    # guillemets, quotes, or non-breaking space — but only if that digit is a known
+    # footnote number. Uses a lookahead to require space/punct/end after the digit.
+    _inline_ref = re.compile(
+        r'(?<=[a-zA-ZàâäéèêëîïôùûüœÀ-ÿ»\xbb\xab\"\'\)\]\xa0])([1-9])'
+        r'(?=[\s\u00a0,;:.!?»\'\"\)\]\n]|$)'
+    )
+
     def render_para(p):
         # Escape HTML first (tokens are not HTML-special chars)
         p = p.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
         # Replace \x01N\x02 tokens with <sup> links
         p = _FN_TOK.sub(lambda m: make_sup(int(m.group(1))), p)
-        # Also catch inline refs (digit attached to word) for known footnotes
+        # Replace inline ref digits (attached to word/punct) when they are known footnotes
         def sub_ref(m):
             n = int(m.group(1))
             if n in footnotes:
                 return make_sup(n)
             return m.group(0)
-        p = _FN_REF.sub(sub_ref, p)
+        p = _inline_ref.sub(sub_ref, p)
         return f'<p>{p}</p>'
 
     html_parts = [render_para(p) for p in body_paras if p]
@@ -2335,6 +2412,25 @@ def build():
             pdf_articles = []   # articles shown in sommaire (have known metadata)
             known_articles = info.get('articles', [])
 
+            # Precompute print-order prev/next nav for known articles
+            order_key = info.get('order')
+            if order_key:
+                # print_slugs: article slugs in print order (only known-article indices)
+                print_slugs = [
+                    pdfs[j].stem.replace(' ', '-').lower()
+                    for j in order_key
+                    if j < len(pdfs) and j < len(known_articles)
+                ]
+                print_nav = {
+                    slug: (
+                        print_slugs[pos - 1] if pos > 0 else '',
+                        print_slugs[pos + 1] if pos < len(print_slugs) - 1 else '',
+                    )
+                    for pos, slug in enumerate(print_slugs)
+                }
+            else:
+                print_nav = None
+
             for i, pdf in enumerate(pdfs):
                 clip_bottom = 0.92 if n in {12, 16, 22} else 0.86
                 pages = extract_pdf_text(pdf, fix_char_spacing=(n in {9, 10, 12, 22}), clip_bottom=clip_bottom)
@@ -2363,9 +2459,14 @@ def build():
                 slug = pdf.stem.replace(' ', '-').lower()
                 article_file = f"{slug}.html"
 
-                # Determine prev/next among sommaire-listed articles only
-                prev_link = f"{pdfs[i-1].stem.replace(' ', '-').lower()}.html" if i > 0 else ""
-                next_link = f"{pdfs[i+1].stem.replace(' ', '-').lower()}.html" if i < len(pdfs)-1 else ""
+                # Determine prev/next in print order (falls back to filename sort order)
+                if print_nav and slug in print_nav:
+                    prev_s, next_s = print_nav[slug]
+                    prev_link = f"{prev_s}.html" if prev_s else ""
+                    next_link = f"{next_s}.html" if next_s else ""
+                else:
+                    prev_link = f"{pdfs[i-1].stem.replace(' ', '-').lower()}.html" if i > 0 else ""
+                    next_link = f"{pdfs[i+1].stem.replace(' ', '-').lower()}.html" if i < len(pdfs)-1 else ""
 
                 art_html = generate_article_page(
                     n, info,
