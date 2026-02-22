@@ -31,6 +31,8 @@ Static site for *Plurielles*, a French Jewish cultural review magazine. Built wi
 - All issues 7-22 have `order` list in `ISSUES` dict for printing-order sommaire display
 - `clip_bottom` parameter added to `extract_pdf_text`; uses 0.92 for issues 12, 16, 22 (vs 0.86 default)
 - Two misnamed PDFs fixed: `pl13.4-5pdf` → `pl13.4-5.pdf`, `pl14-126-134pdf` → `pl14-126-134.pdf`
+- Prev/next article navigation uses print order (from `order` key) not filename sort order
+- Improved footnote detection: `_FN_NUM_PREFIX` accepts "N." and "N " formats; `_NOTES_HEADER` strips section headers; per-page footnote renumbering via `_add_footnotes`
 - All changes committed and pushed to GitHub Pages
 
 ### Footer y-positions (do not change clip defaults without checking)
@@ -40,8 +42,8 @@ Static site for *Plurielles*, a French Jewish cultural review magazine. Built wi
 - Issue 22: footer at **93%**, content to 90% — use 0.92
 
 ### Known limitations / possible future work
-- Prev/next article navigation links follow string-sort order, not printing order
-- Issues 1-6 and 23-24 do not have full article lists (issues 23-24 are handled separately via DOCX)
+- Issues 1-6 do not have full article lists (no individual PDFs, only whole-issue PDF)
+- Issues 23-24 handled separately: 23 via DOCX articles, 24 via DOCX sections
 
 ## How to Run
 ```bash
