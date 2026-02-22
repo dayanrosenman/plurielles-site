@@ -9,6 +9,7 @@ import re
 import shutil
 import json
 import zipfile
+import datetime
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
@@ -726,6 +727,15 @@ def extract_pdf_text(pdf_path, fix_char_spacing=False, clip_bottom=0.86):
     clip_bottom: fraction of page height to clip at bottom (default 0.86).
     Use 0.92 for issues 12, 16, 22 whose content reaches closer to the footer.
     """
+    _LIGATURES = str.maketrans({
+        '\ufb00': 'ff', '\ufb01': 'fi', '\ufb02': 'fl',
+        '\ufb03': 'ffi', '\ufb04': 'ffl', '\ufb05': 'st', '\ufb06': 'st',
+    })
+    # C0 control characters \x00-\x04 must be stripped from raw PDF text:
+    # PDFs with broken font encoding sometimes produce these as garbage; they would
+    # conflict with our inline-marker bytes (\x01\x02 = footnote, \x03\x04 = italic).
+    _STRIP_CTRL = str.maketrans({i: None for i in range(0x05)})
+
     try:
         doc = fitz.open(str(pdf_path))
         pages = []
@@ -734,20 +744,14 @@ def extract_pdf_text(pdf_path, fix_char_spacing=False, clip_bottom=0.86):
             pw = page.rect.width
             # Clip away the top 11% (running headers) and bottom (footers/page numbers)
             clip = fitz.Rect(0, ph * 0.11, pw, ph * clip_bottom)
-            text = page.get_text("text", clip=clip)
-            # Fix typographic ligatures → plain letters
-            text = (text
-                .replace('\ufb00', 'ff')
-                .replace('\ufb01', 'fi')
-                .replace('\ufb02', 'fl')
-                .replace('\ufb03', 'ffi')
-                .replace('\ufb04', 'ffl')
-                .replace('\ufb05', 'st')
-                .replace('\ufb06', 'st')
-            )
-            # Fix soft hyphenation: word- + newline + lowercase → join
-            text = re.sub(r'-\n([a-zàâäéèêëîïôùûüœ])', r'\1', text)
+
             if fix_char_spacing:
+                # Older PDFs (issues 9, 10, 12, 22): italic font metadata unreliable;
+                # use plain text mode so the char-spacing collapse regex works cleanly.
+                text = page.get_text("text", clip=clip)
+                text = text.translate(_LIGATURES).translate(_STRIP_CTRL)
+                # Fix soft hyphenation: word- + newline + lowercase → join
+                text = re.sub(r'-\n([a-zàâäéèêëîïôùûüœ])', r'\1', text)
                 # Collapse runs of single letters separated by spaces into one word.
                 # Only matches single-char groups (not 2-3 char tokens) to avoid
                 # accidentally joining distinct short words like "et le XXe".
@@ -757,6 +761,43 @@ def extract_pdf_text(pdf_path, fix_char_spacing=False, clip_bottom=0.86):
                     lambda m: m.group(0).replace(' ', ''),
                     text
                 )
+            else:
+                # Modern PDFs: use dict mode to get span-level font info so italic
+                # spans (book titles etc.) can be wrapped in \x03...\x04 markers,
+                # which are later converted to <em>...</em> in the HTML output.
+                page_dict = page.get_text("dict", clip=clip)
+                span_parts = []
+                for block in page_dict.get("blocks", []):
+                    if block.get("type") != 0:   # skip image blocks
+                        continue
+                    for line in block.get("lines", []):
+                        for span in line.get("spans", []):
+                            # translate(_STRIP_CTRL) removes \x00-\x04 garbage chars
+                            # that some PDFs with broken font encoding produce —
+                            # they would otherwise conflict with our marker bytes.
+                            s = span.get("text", "").translate(_LIGATURES).translate(_STRIP_CTRL)
+                            flags = span.get("flags", 0)
+                            font  = span.get("font", "")
+                            is_italic = bool(flags & 2) or \
+                                        "Italic" in font or "Oblique" in font
+                            # Don't wrap standalone 1-2 digit spans: these are
+                            # almost certainly footnote-reference superscripts
+                            # (or page numbers) typeset in an oblique/italic cut.
+                            # Wrapping them would produce \x03N\x04 which blocks
+                            # the _INLINE_REF lookbehind and breaks ref detection.
+                            if is_italic and s.strip() and \
+                                    not re.match(r'^\d{1,2}$', s.strip()):
+                                s = f'\x03{s}\x04'
+                            span_parts.append(s)
+                        span_parts.append('\n')   # newline at end of every line
+                text = ''.join(span_parts)
+                # Fix soft hyphenation across spans.
+                # Case 1: both sides same italic state → works normally.
+                # Case 2: continuation starts with \x03 → handle separately.
+                text = re.sub(r'-\n\x03([a-zàâäéèêëîïôùûüœ])',
+                              lambda m: '\x03' + m.group(1), text)
+                text = re.sub(r'-\n([a-zàâäéèêëîïôùûüœ])', r'\1', text)
+
             pages.append(text)
         doc.close()
         return pages
@@ -780,7 +821,7 @@ def extract_docx_text(docx_path):
             with z.open('word/document.xml') as f:
                 doc_tree = ET.parse(f)
 
-            # ── Read footnotes.xml ───────────────────────────────────────────
+            # ── Read footnotes.xml with italic detection ─────────────────────
             footnote_texts = {}
             if 'word/footnotes.xml' in z.namelist():
                 with z.open('word/footnotes.xml') as f:
@@ -796,28 +837,59 @@ def extract_docx_text(docx_path):
                         continue
                     if fn_id <= 0:
                         continue
-                    text = ''.join(
-                        t.text or ''
-                        for t in fn.findall(f'.//{{{_W}}}t')
-                    ).strip()
+                    # Iterate by runs to preserve italic spans
+                    fn_parts = []
+                    for r in fn.findall(f'.//{{{_W}}}r'):
+                        rpr = r.find(f'{{{_W}}}rPr')
+                        is_italic = False
+                        if rpr is not None:
+                            i_tag = rpr.find(f'{{{_W}}}i')
+                            if i_tag is not None:
+                                val = i_tag.get(f'{{{_W}}}val', 'true')
+                                is_italic = val not in ('0', 'false')
+                        run_text = ''.join(
+                            child.text or '' for child in r
+                            if child.tag == f'{{{_W}}}t'
+                        ).replace('\x03', '').replace('\x04', '')  # strip conflict chars
+                        if is_italic and run_text.strip():
+                            run_text = f'\x03{run_text}\x04'
+                        fn_parts.append(run_text)
+                    text = ''.join(fn_parts).strip()
                     if text:
                         footnote_texts[fn_id] = text
 
         # ── Read body paragraphs, inserting \x01N\x02 at fn-ref positions ───
+        # Iterate by runs (w:r) so we can detect italic spans via w:rPr/w:i.
         paras = []
         for p in doc_tree.findall(f'.//{{{_W}}}p'):
             parts = []
-            for child in p.iter():
-                if child.tag == f'{{{_W}}}t':
-                    parts.append(child.text or '')
-                elif child.tag == f'{{{_W}}}footnoteReference':
-                    fn_id_str = child.get(f'{{{_W}}}id', '')
-                    try:
-                        fn_id = int(fn_id_str)
-                        if fn_id > 0:
-                            parts.append(f'\x01{fn_id}\x02')
-                    except ValueError:
-                        pass
+            for r in p.findall(f'.//{{{_W}}}r'):
+                rpr = r.find(f'{{{_W}}}rPr')
+                is_italic = False
+                if rpr is not None:
+                    i_tag = rpr.find(f'{{{_W}}}i')
+                    if i_tag is not None:
+                        val = i_tag.get(f'{{{_W}}}val', 'true')
+                        is_italic = val not in ('0', 'false')
+                run_parts = []
+                for child in r:
+                    if child.tag == f'{{{_W}}}t':
+                        run_parts.append(child.text or '')
+                    elif child.tag == f'{{{_W}}}footnoteReference':
+                        fn_id_str = child.get(f'{{{_W}}}id', '')
+                        try:
+                            fn_id = int(fn_id_str)
+                            if fn_id > 0:
+                                run_parts.append(f'\x01{fn_id}\x02')
+                        except ValueError:
+                            pass
+                run_text = ''.join(run_parts).replace('\x03', '').replace('\x04', '')
+                # Only wrap in italic markers if there is actual visible text
+                # (don't wrap footnote-marker-only runs)
+                visible = re.sub(r'\x01\d+\x02', '', run_text).strip()
+                if is_italic and visible:
+                    run_text = f'\x03{run_text}\x04'
+                parts.append(run_text)
             paras.append(''.join(parts))
 
         return paras, footnote_texts
@@ -888,24 +960,30 @@ def strip_article_header(paragraphs, title, author):
         prefix = t[:40].lower()
         if len(prefix) > 10:
             title_tokens.append(prefix)
-        # Also add each ' — '-separated part (subtitle etc.) as its own token,
-        # so that multi-line DOCX titles (split by em-dash) are fully stripped.
-        for part in t.split(' — '):
-            part_lower = part.strip().lower()
-            if len(part_lower) > 10 and part_lower[:40] not in title_tokens:
-                title_tokens.append(part_lower[:40])
+        # Also add each ' — '- or ' : '-separated part as its own token, so that
+        # multi-line DOCX titles (split by em-dash or French colon) are stripped.
+        # E.g. "…invisible : le cas du marranisme" → "le cas du marranisme" token.
+        seen_parts = set(title_tokens)
+        for sep in (' — ', ' : '):
+            for part in t.split(sep):
+                part_lower = part.strip().lower()
+                tok = part_lower[:40]
+                if len(part_lower) > 10 and tok not in seen_parts:
+                    title_tokens.append(tok)
+                    seen_parts.add(tok)
 
     all_tokens = author_tokens + title_tokens
 
     def _norm(s):
-        """Normalize whitespace/quote variants and strip footnote markers for comparison."""
+        """Normalize whitespace/quote variants and strip formatting markers for comparison."""
         # Whitespace variants → ASCII space
         s = s.replace('\xa0', ' ').replace('\u202f', ' ').replace('\u2009', ' ')
         # Curly/smart apostrophes/quotes → ASCII equivalents
         s = s.replace('\u2019', "'").replace('\u2018', "'")
         s = s.replace('\u201c', '"').replace('\u201d', '"')
-        # Strip inline footnote markers (\x01N\x02)
+        # Strip inline footnote markers (\x01N\x02) and italic markers (\x03, \x04)
         s = re.sub(r'\x01\d+\x02', '', s)
+        s = s.replace('\x03', '').replace('\x04', '')
         return s
 
     # Leading prefixes that indicate "author byline" in DOCX (e.g. "Par Auteur", "Entretien avec Auteur")
@@ -1037,6 +1115,10 @@ def text_to_paragraphs(text):
         # A new paragraph starts when the PREVIOUS line ended with sentence-ending
         # punctuation AND the current line starts with a capital or special char.
         # Skip over footnote tokens to find the actual last meaningful word.
+        # stripped_lead strips a leading italic-start marker (\x03) so that a
+        # line beginning with an italic span is still seen as starting with its
+        # first real character for the uppercase check.
+        stripped_lead = stripped[1:] if stripped and stripped[0] == '\x03' else stripped
         starts_new = False
         if current_words:
             actual_last = ''
@@ -1045,8 +1127,8 @@ def text_to_paragraphs(text):
                     actual_last = w
                     break
             if actual_last and actual_last[-1] in '.!?:':
-                if stripped and (stripped[0].isupper() or
-                                 re.match(r'^[A-ZÀ-Ö]\.?\s', stripped)):
+                if stripped_lead and (stripped_lead[0].isupper() or
+                                      re.match(r'^[A-ZÀ-Ö]\.?\s', stripped_lead)):
                     starts_new = True
 
         if starts_new:
@@ -1072,8 +1154,11 @@ _FN_TOK = re.compile(r'\x01(\d{1,2})\x02')
 # punctuation, guillemet, quote, or NBSP — followed by whitespace / punct / end.
 # Used in render_para to detect superscript references in extracted PDF text.
 _INLINE_REF = re.compile(
-    # lookbehind: must follow a letter, French letter, guillemet, quote, bracket, or NBSP
-    r'(?<=[a-zA-ZàâäéèêëîïôùûüœÀ-ÿ»\xbb\xab\"\'\)\]\xa0])'
+    # lookbehind: must follow a letter, French letter, guillemet, quote, bracket,
+    # NBSP, italic-start \x03 or italic-end \x04 markers.
+    # \x04: catches "word\x04N" (ref digit right after italic span closes).
+    # \x03: catches "\x03N" (ref digit at start of its own italic span).
+    r'(?<=[a-zA-ZàâäéèêëîïôùûüœÀ-ÿ»\xbb\xab\"\'\)\]\xa0\x03\x04])'
     # group 1: 1 or 2 digit footnote number (directly attached to preceding char)
     r'([1-9][0-9]?)'
     r'(?=[\s\u00a0,;:.!?»\'\"\)\]\n]|$)'
@@ -1121,8 +1206,25 @@ _FN_SPLIT = re.compile(
     r'(?=\d{1,2}(?:\.\s*\S|\s{1,3}[A-ZÀ-Û«\"\'\(\[]|[A-ZÀ-Û][a-záàâäéèêëîïôùûüœ.,]))'
 )
 
+# Pattern to detect body-text continuation accidentally merged into the last footnote.
+# Sentence-ending punct + whitespace + digit + space + lowercase word:
+# e.g. "...p. 118). 40 dizaines de millions de fidèles…" where "40 dizaines…"
+# is body text that continued after the footnote column in the PDF.
+# This pattern does NOT match footnote-start prefixes (those require uppercase
+# or a dot, handled by _FN_SPLIT / _FN_NUM_PREFIX).
+_FN_BODY_OVERFLOW = re.compile(
+    r'(?<=[.!?»\'\"\)\]])\s+(?=\d{1,3}\s+[a-záàâäéèêëîïôùûüœ])'
+)
+
+
 def _split_fn_block(text):
-    """Parse a string of one or more footnotes into {num: text} dict."""
+    """Parse a string of one or more footnotes into ({num: text}, overflow) tuple.
+
+    overflow is any trailing text that looks like body prose accidentally merged
+    into the last footnote (e.g., body-column continuation after a footnote
+    that ends with a page number rather than a sentence-ending period).
+    Callers should append overflow back to the body paragraph list.
+    """
     parts = _FN_SPLIT.split(text)
     result = {}
     for part in parts:
@@ -1133,7 +1235,23 @@ def _split_fn_block(text):
             content = part[m.end():].strip()
             if content:
                 result[num] = content
-    return result
+
+    # Detect body-text overflow in the last footnote's content.
+    # If sentence-end is followed by a number + lowercase word, the text
+    # after that boundary was likely body prose, not footnote text.
+    overflow = ''
+    if result:
+        last_num = max(result.keys())
+        content = result[last_num]
+        m_ov = _FN_BODY_OVERFLOW.search(content)
+        if m_ov:
+            overflow_text = content[m_ov.end():].strip()
+            if len(overflow_text) > 50:
+                # Keep only the text up to (but not including) the overflow space
+                result[last_num] = content[:m_ov.start()].strip()
+                overflow = overflow_text
+
+    return result, overflow
 
 # Inline footnote ref in body text: word/punct followed by a superscript-style digit.
 # Matches: "word1" "»1" "pays1." "texte1," etc.
@@ -1204,8 +1322,10 @@ def detect_footnotes(paragraphs):
 
         # Case A: paragraph IS a footnote block (starts with "N." or "N ")
         if _is_fn_para(para):
-            new_fns = _split_fn_block(para)
+            new_fns, fn_overflow = _split_fn_block(para)
             _add_footnotes(new_fns)
+            if fn_overflow:
+                raw_body.append(fn_overflow)
             continue
 
         # Case B: paragraph contains \x01N\x02 tokens inserted by text_to_paragraphs
@@ -1221,14 +1341,16 @@ def detect_footnotes(paragraphs):
                 if after_s and (after_s[0].isupper() or after_s[0] in '«\"\'(') and len(after_s) > 15:
                     body_buf = body_buf.rstrip() + f'\x01{fn_num}\x02'
                     fn_raw = str(fn_num) + '. ' + after_s
-                    _add_footnotes(_split_fn_block(fn_raw))
+                    fn_dict, _ = _split_fn_block(fn_raw)
+                    _add_footnotes(fn_dict)
                     i += 2
                     # Absorb any additional fn tokens in same paragraph
                     while i < len(chunks):
                         fn_num2 = int(chunks[i])
                         after2 = (chunks[i + 1] if i + 1 < len(chunks) else '').lstrip()
                         fn_raw2 = str(fn_num2) + '. ' + after2
-                        _add_footnotes(_split_fn_block(fn_raw2))
+                        fn_dict2, _ = _split_fn_block(fn_raw2)
+                        _add_footnotes(fn_dict2)
                         i += 2
                     break
                 else:
@@ -1247,11 +1369,13 @@ def detect_footnotes(paragraphs):
             if fn_start_num <= 25:
                 body_part = para[:m.start()].strip()
                 fn_part = para[m.start():].strip()
-                new_fns = _split_fn_block(fn_part)
+                new_fns, fn_overflow = _split_fn_block(fn_part)
                 if new_fns:
                     if body_part:
                         raw_body.append(body_part)
                     _add_footnotes(new_fns)
+                    if fn_overflow:
+                        raw_body.append(fn_overflow)
                     continue
 
         # Case D: body text ends with an inline ref digit but no footnote text follows
@@ -1368,6 +1492,9 @@ def pdf_pages_to_html(pages, title="", author=""):
                 return '.' + make_sup(global_n)
             p_html = _INLINE_REF_PERIOD.sub(sub_ref_period, p_html)
             p_html = _INLINE_REF.sub(sub_ref, p_html)
+            # Expand italic markers → <em>…</em>  (must come last so the
+            # lookbehind patterns above can still see the raw \x03/\x04 chars)
+            p_html = p_html.replace('\x03', '<em>').replace('\x04', '</em>')
             html_parts.append(f'<p>{p_html}</p>')
 
     # ── Footnote list ─────────────────────────────────────────────────────────
@@ -1376,7 +1503,8 @@ def pdf_pages_to_html(pages, title="", author=""):
         html_parts.append('<ol class="footnotes">')
         for n in sorted(global_fns.keys()):
             text = (global_fns[n]
-                    .replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;'))
+                    .replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+                    .replace('\x03', '<em>').replace('\x04', '</em>'))
             html_parts.append(
                 f'<li id="fn-{n}" class="footnote">'
                 f'<a href="#ref-{n}" class="fn-back" title="Retour au texte">↩</a> '
@@ -1432,6 +1560,8 @@ def paragraphs_to_html(paragraphs, prebuilt_footnotes=None):
             return m.group(0)
         p = _INLINE_REF_PERIOD.sub(sub_ref_period, p)
         p = _INLINE_REF.sub(sub_ref, p)
+        # Expand italic markers → <em>…</em>  (must come last)
+        p = p.replace('\x03', '<em>').replace('\x04', '</em>')
         return f'<p>{p}</p>'
 
     html_parts = [render_para(p) for p in body_paras if p]
@@ -1441,7 +1571,8 @@ def paragraphs_to_html(paragraphs, prebuilt_footnotes=None):
         html_parts.append('<ol class="footnotes">')
         for n in sorted(footnotes.keys()):
             text = (footnotes[n]
-                    .replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;'))
+                    .replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+                    .replace('\x03', '<em>').replace('\x04', '</em>'))
             html_parts.append(
                 f'<li id="fn-{n}" class="footnote">'
                 f'<a href="#ref-{n}" class="fn-back" title="Retour au texte">↩</a> '
@@ -1912,6 +2043,27 @@ div.article-list__link .article-list__author {
   color: rgba(255,255,255,0.7);
 }
 
+.article-header__pdf {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45em;
+  margin-top: 1.25rem;
+  padding: 0.38rem 0.85rem;
+  border: 1px solid rgba(255,255,255,0.35);
+  border-radius: 4px;
+  color: rgba(255,255,255,0.8);
+  font-family: var(--font-ui);
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
+  text-decoration: none;
+  transition: background 0.18s, border-color 0.18s, color 0.18s;
+}
+.article-header__pdf:hover {
+  background: rgba(255,255,255,0.12);
+  border-color: rgba(255,255,255,0.7);
+  color: #fff;
+}
+
 .article-body {
   max-width: var(--article-w);
   margin: 0 auto;
@@ -2067,6 +2219,26 @@ div.article-list__link .article-list__author {
 
 .about-content a:not(.btn) { color: var(--clr-primary); }
 
+.bookstore-list {
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.bookstore-list li {
+  padding: 0.9rem 1.1rem;
+  background: var(--clr-bg-alt, #f8f7f4);
+  border-left: 3px solid var(--clr-primary);
+  border-radius: 0 4px 4px 0;
+  color: var(--clr-muted);
+  line-height: 1.6;
+}
+.bookstore-list strong a { color: var(--clr-dark); text-decoration: none; }
+.bookstore-list strong a:hover { color: var(--clr-primary); }
+.bookstore-list a { color: var(--clr-primary); }
+
 /* ── Footnotes ───────────────────────────────────────────────────────────────── */
 sup.fn-ref { font-size: 0.7em; line-height: 1; vertical-align: super; }
 sup.fn-ref a { color: var(--clr-primary); text-decoration: none; font-weight: 600; }
@@ -2206,9 +2378,15 @@ a.fn-back:hover { color: var(--clr-primary); }
 
 
 # ─── HTML Helpers ─────────────────────────────────────────────────────────────
-def html_page(title, content, depth=0, active_nav=""):
+_SITE_BASE_URL = "https://dayanrosenman.github.io/plurielles-site"
+_SITE_DEFAULT_DESC = ("Plurielles est une revue semestrielle de culture juive "
+                      "laïque et humaniste, publiée par l'AJHL depuis 1993.")
+
+
+def html_page(title, content, depth=0, active_nav="", description="", extra_head=""):
     # Keep title short for browser tab
     title = title[:80] if len(title) > 80 else title
+    desc = description or _SITE_DEFAULT_DESC
     prefix = "../" * depth
     nav_links = [
         ("Accueil", f"{prefix}index.html", ""),
@@ -2233,7 +2411,14 @@ def html_page(title, content, depth=0, active_nav=""):
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{title} — Plurielles</title>
   <link rel="stylesheet" href="{prefix}css/style.css">
-  <meta name="description" content="Plurielles, revue de culture juive laïque et humaniste">
+  <meta name="description" content="{desc}">
+  <meta property="og:title" content="{title} — Plurielles">
+  <meta property="og:description" content="{desc}">
+  <meta property="og:site_name" content="Plurielles">
+  <meta property="og:locale" content="fr_FR">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="{title} — Plurielles">
+  <meta name="twitter:description" content="{desc}">{extra_head}
 </head>
 <body>
 
@@ -2375,7 +2560,12 @@ def generate_homepage(all_issues):
   </div>
 </section>
 """
-    return html_page("Accueil", content, depth=0, active_nav="")
+    return html_page(
+        "Accueil", content, depth=0, active_nav="",
+        description=("Plurielles — revue semestrielle de culture juive laïque et humaniste depuis 1993. "
+                     "Essais, entretiens, textes littéraires sur le judaïsme, la diaspora et la modernité."),
+        extra_head=f'\n  <link rel="canonical" href="{_SITE_BASE_URL}/">'
+    )
 
 
 def generate_issues_index(all_issues):
@@ -2417,7 +2607,12 @@ def generate_issues_index(all_issues):
   </div>
 </section>
 """
-    return html_page("Tous les numéros", content, depth=1, active_nav="numeros")
+    return html_page(
+        "Tous les numéros", content, depth=1, active_nav="numeros",
+        description=(f"Tous les numéros de Plurielles (N\u00b0\u00a01 à {max(all_issues)}), "
+                     "revue de culture juive laïque et humaniste publiée depuis 1993."),
+        extra_head=f'\n  <link rel="canonical" href="{_SITE_BASE_URL}/numeros/index.html">'
+    )
 
 
 def generate_issue_page(n, info, articles_html, pdf_path=None, depth=2):
@@ -2448,10 +2643,16 @@ def generate_issue_page(n, info, articles_html, pdf_path=None, depth=2):
   </div>
 </section>
 """
-    return html_page(f"N° {n} — {info['title']}", content, depth=2, active_nav="numeros")
+    issue_desc = (f"Plurielles N\u00b0\u00a0{n} ({info['year']}) — {info['title']}. "
+                  f"Dossier\u00a0: {info.get('dossier', '')}.")
+    return html_page(
+        f"N° {n} — {info['title']}", content, depth=2, active_nav="numeros",
+        description=issue_desc[:160],
+        extra_head=f'\n  <link rel="canonical" href="{_SITE_BASE_URL}/numeros/pl{n:02d}/index.html">'
+    )
 
 
-def generate_article_page(n, issue_info, title, author, body_html, prev_link="", next_link=""):
+def generate_article_page(n, issue_info, title, author, body_html, prev_link="", next_link="", pdf_url="", article_slug=""):
     nav = ""
     if prev_link or next_link:
         nav = f"""<div class="article-nav">
@@ -2462,6 +2663,14 @@ def generate_article_page(n, issue_info, title, author, body_html, prev_link="",
     <a href="../index.html">Retour au numéro {n}</a>
   </div>"""
 
+    pdf_btn = ""
+    if pdf_url:
+        pdf_btn = f"""
+    <a href="{pdf_url}" class="article-header__pdf" download>
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Télécharger le PDF
+    </a>"""
+
     content = f"""
 {breadcrumb(("Accueil", "../../../index.html"), ("Numéros", "../../index.html"), (f"N° {n}", "../index.html"), (title[:50], None))}
 
@@ -2469,7 +2678,7 @@ def generate_article_page(n, issue_info, title, author, body_html, prev_link="",
   <div class="article-header__inner">
     <a href="../index.html" class="article-header__issue">← Plurielles N° {n} — {issue_info['year']}</a>
     <h1 class="article-header__title">{title}</h1>
-    <p class="article-header__author">{author}</p>
+    <p class="article-header__author">{author}</p>{pdf_btn}
   </div>
 </div>
 
@@ -2478,7 +2687,49 @@ def generate_article_page(n, issue_info, title, author, body_html, prev_link="",
   {nav}
 </div>
 """
-    return html_page(f"{title} — N° {n}", content, depth=3, active_nav="numeros")
+    # ── SEO metadata for article pages ─────────────────────────────────────────
+    # Unescape HTML entities for clean description / JSON-LD
+    raw_title = (title.replace('&amp;', '&').replace('&lt;', '<')
+                      .replace('&gt;', '>').replace('&#39;', "'")
+                      .replace('&quot;', '"'))
+    raw_author = (author.replace('&amp;', '&').replace('&lt;', '<')
+                        .replace('&gt;', '>').replace('&#39;', "'"))
+    if raw_author:
+        desc = f"{raw_title[:95]} — {raw_author}. Plurielles N° {n} ({issue_info['year']})."
+    else:
+        desc = f"{raw_title[:110]}. Plurielles N° {n} ({issue_info['year']})."
+    desc = desc[:160]
+
+    canonical = f"{_SITE_BASE_URL}/numeros/pl{n:02d}/articles/{article_slug}.html"
+    ld_data = {
+        "@context": "https://schema.org",
+        "@type": "Article",
+        "headline": raw_title[:110],
+        "datePublished": str(issue_info.get('year', '')),
+        "publisher": {
+            "@type": "Organization",
+            "name": "Plurielles",
+            "url": _SITE_BASE_URL + "/"
+        },
+        "isPartOf": {
+            "@type": "Periodical",
+            "name": "Plurielles",
+            "issueNumber": str(n)
+        },
+        "inLanguage": "fr",
+        "url": canonical,
+    }
+    if raw_author:
+        ld_data["author"] = {"@type": "Person", "name": raw_author}
+    extra_head = (
+        f'\n  <link rel="canonical" href="{canonical}">'
+        f'\n  <meta property="og:type" content="article">'
+        f'\n  <meta property="og:url" content="{canonical}">'
+        f'\n  <script type="application/ld+json">{json.dumps(ld_data, ensure_ascii=False, separators=(",", ":"))}</script>'
+    )
+
+    return html_page(f"{title} — N° {n}", content, depth=3, active_nav="numeros",
+                     description=desc, extra_head=extra_head)
 
 
 # ─── Comité de Rédaction ──────────────────────────────────────────────────────
@@ -2597,7 +2848,12 @@ def generate_comite_page():
   </div>
 </section>
 """
-    return html_page("Comité de rédaction", content, depth=0, active_nav="comite")
+    return html_page(
+        "Comité de rédaction", content, depth=0, active_nav="comite",
+        description=("Le comité de rédaction de Plurielles — universitaires, écrivains, "
+                     "journalistes et intellectuels engagés dans la réflexion sur le judaïsme laïque."),
+        extra_head=f'\n  <link rel="canonical" href="{_SITE_BASE_URL}/comite.html">'
+    )
 
 
 def generate_about_page():
@@ -2632,6 +2888,31 @@ def generate_about_page():
         <li>Anciens numéros : 13 €</li>
       </ul>
 
+      <h2>Librairies à Paris</h2>
+      <p>Vous pouvez trouver Plurielles dans les librairies suivantes :</p>
+      <ul class="bookstore-list">
+        <li>
+          <strong><a href="https://www.mahj.org/fr" target="_blank" rel="noopener">Librairie du Musée d'art et d'histoire du Judaïsme (mahJ)</a></strong><br>
+          71 rue du Temple, 75003 Paris —
+          <a href="https://maps.google.com/?q=71+rue+du+Temple,+75003+Paris" target="_blank" rel="noopener">Plan</a>
+        </li>
+        <li>
+          <strong><a href="https://www.librairie-compagnie.fr/" target="_blank" rel="noopener">Librairie Compagnie</a></strong><br>
+          58 rue des Écoles, 75005 Paris —
+          <a href="https://maps.google.com/?q=58+rue+des+Ecoles,+75005+Paris" target="_blank" rel="noopener">Plan</a>
+        </li>
+        <li>
+          <strong><a href="https://www.memorialdelashoah.org/" target="_blank" rel="noopener">Librairie du Mémorial de la Shoah</a></strong><br>
+          17 rue Geoffroy l'Asnier, 75004 Paris —
+          <a href="https://maps.google.com/?q=17+rue+Geoffroy+l%27Asnier,+75004+Paris" target="_blank" rel="noopener">Plan</a>
+        </li>
+        <li>
+          <strong><a href="http://lescahiersdecolette.com/" target="_blank" rel="noopener">Les Cahiers de Colette</a></strong><br>
+          23 rue Rambuteau, 75003 Paris —
+          <a href="https://maps.google.com/?q=23+rue+Rambuteau,+75003+Paris" target="_blank" rel="noopener">Plan</a>
+        </li>
+      </ul>
+
       <h2>Contact</h2>
       <p>
         Association pour un Judaïsme Humaniste et Laïque (AJHL)<br>
@@ -2643,7 +2924,12 @@ def generate_about_page():
   </div>
 </section>
 """
-    return html_page("À propos", content, depth=0, active_nav="about")
+    return html_page(
+        "À propos", content, depth=0, active_nav="about",
+        description=("À propos de Plurielles, revue semestrielle de culture juive laïque fondée en 1993 "
+                     "par l'AJHL. Comment se procurer la revue, librairies partenaires, contact."),
+        extra_head=f'\n  <link rel="canonical" href="{_SITE_BASE_URL}/about.html">'
+    )
 
 
 # ─── Main Build Process ───────────────────────────────────────────────────────
@@ -2745,12 +3031,22 @@ def build():
                     prev_link = f"{pdfs[i-1].stem.replace(' ', '-').lower()}.html" if i > 0 else ""
                     next_link = f"{pdfs[i+1].stem.replace(' ', '-').lower()}.html" if i < len(pdfs)-1 else ""
 
+                # Copy article PDF to assets for per-article download link
+                pdf_dst_dir = OUTPUT / "assets" / "pdfs" / "articles" / f"pl{n:02d}"
+                pdf_dst_dir.mkdir(parents=True, exist_ok=True)
+                pdf_dst = pdf_dst_dir / pdf.name
+                if not pdf_dst.exists():
+                    shutil.copy2(pdf, pdf_dst)
+                pdf_url = f"../../../assets/pdfs/articles/pl{n:02d}/{pdf.name}"
+
                 art_html = generate_article_page(
                     n, info,
                     escape_html(title_candidate),
                     escape_html(author_candidate),
                     body_html,
-                    prev_link, next_link
+                    prev_link, next_link,
+                    pdf_url=pdf_url,
+                    article_slug=slug
                 )
                 (articles_out / article_file).write_text(art_html, encoding="utf-8")
 
@@ -2887,7 +3183,8 @@ def build():
             escape_html(title),
             escape_html(author),
             body_html,
-            prev_link, next_link
+            prev_link, next_link,
+            article_slug=slug
         )
         (articles23_out / f"{slug}.html").write_text(art_html, encoding="utf-8")
 
@@ -3038,6 +3335,7 @@ def build():
             body_html,
             f"{prev_slug}.html" if prev_slug else "",
             f"{next_slug}.html" if next_slug else "",
+            article_slug=slug
         )
         (articles24_out / f"{slug}.html").write_text(art_html, encoding="utf-8")
         articles24.append((slug, author, title))
@@ -3094,6 +3392,55 @@ def build():
     about_html = generate_about_page()
     (OUTPUT / "about.html").write_text(about_html, encoding="utf-8")
     print("  ✓ About page done")
+
+    # ── Sitemap & robots.txt ────────────────────────────────────────────────────
+    print("  Generating sitemap.xml and robots.txt...")
+    today = datetime.date.today().isoformat()
+
+    # Collect all HTML files, excluding .claude / .git / worktree paths
+    sitemap_urls = []
+    for html_file in sorted(OUTPUT.rglob("*.html")):
+        rel = html_file.relative_to(OUTPUT)
+        rel_str = rel.as_posix()
+        # Skip files inside hidden/internal directories or non-content pages
+        if any(part.startswith('.') for part in rel.parts):
+            continue
+        if rel_str == "404.html":
+            continue
+        url = f"{_SITE_BASE_URL}/{rel_str}"
+        # Assign priority based on path depth / type
+        if rel_str == "index.html":
+            priority = "1.0"
+            changefreq = "monthly"
+        elif rel_str in ("numeros/index.html", "about.html", "comite.html"):
+            priority = "0.8"
+            changefreq = "monthly"
+        elif rel_str.endswith("/index.html"):
+            priority = "0.7"
+            changefreq = "yearly"
+        else:
+            priority = "0.5"
+            changefreq = "never"
+        sitemap_urls.append((url, today, changefreq, priority))
+
+    sitemap_xml = '<?xml version="1.0" encoding="UTF-8"?>\n'
+    sitemap_xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+    for url, lastmod, changefreq, priority in sitemap_urls:
+        sitemap_xml += (f"  <url>\n"
+                        f"    <loc>{url}</loc>\n"
+                        f"    <lastmod>{lastmod}</lastmod>\n"
+                        f"    <changefreq>{changefreq}</changefreq>\n"
+                        f"    <priority>{priority}</priority>\n"
+                        f"  </url>\n")
+    sitemap_xml += '</urlset>\n'
+    (OUTPUT / "sitemap.xml").write_text(sitemap_xml, encoding="utf-8")
+    print(f"    ✓ sitemap.xml ({len(sitemap_urls)} URLs)")
+
+    robots_txt = (f"User-agent: *\n"
+                  f"Allow: /\n"
+                  f"Sitemap: {_SITE_BASE_URL}/sitemap.xml\n")
+    (OUTPUT / "robots.txt").write_text(robots_txt, encoding="utf-8")
+    print("    ✓ robots.txt")
 
     print("\nBuild complete!")
     print(f"Output: {OUTPUT}")
