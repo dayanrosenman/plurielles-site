@@ -835,6 +835,10 @@ def docx_paras_to_html(raw_paras, title="", author="", footnotes=None):
     so DOCX markers (\\x01N\\x02) are rendered as inline <sup> links without
     mis-parsing body text as footnote text.
     """
+    # Pattern for editorial annotations like "(+anny)", "(-david)", "(ADR)" etc.
+    # These are reviewer/editor notes sometimes left in DOCX files.
+    _EDITORIAL_ANNOT = re.compile(r'^\([+\-]?\w{1,20}\)$')
+
     paragraphs = []
     for p in raw_paras:
         s = p.strip()
@@ -843,6 +847,9 @@ def docx_paras_to_html(raw_paras, title="", author="", footnotes=None):
         # Skip very short lines (page numbers etc.) but keep paragraphs that
         # contain footnote markers even if otherwise short.
         if len(s) < 4 and not _FN_TOK.search(s):
+            continue
+        # Skip editorial annotation paragraphs (e.g. "(+anny)", "(ADR)")
+        if _EDITORIAL_ANNOT.match(s):
             continue
         paragraphs.append(s)
     paragraphs = strip_article_header(paragraphs, title, author)
@@ -891,39 +898,80 @@ def strip_article_header(paragraphs, title, author):
     all_tokens = author_tokens + title_tokens
 
     def _norm(s):
-        """Normalize whitespace variants (NBSP, narrow NBSP, etc.) to ASCII space."""
-        return s.replace('\xa0', ' ').replace('\u202f', ' ').replace('\u2009', ' ')
+        """Normalize whitespace/quote variants and strip footnote markers for comparison."""
+        # Whitespace variants → ASCII space
+        s = s.replace('\xa0', ' ').replace('\u202f', ' ').replace('\u2009', ' ')
+        # Curly/smart apostrophes/quotes → ASCII equivalents
+        s = s.replace('\u2019', "'").replace('\u2018', "'")
+        s = s.replace('\u201c', '"').replace('\u201d', '"')
+        # Strip inline footnote markers (\x01N\x02)
+        s = re.sub(r'\x01\d+\x02', '', s)
+        return s
 
-    # --- DOCX style: leading paragraphs that ARE the title / author ---
-    i = 0
-    while i < min(6, len(paragraphs)):
-        p_lower = _norm(paragraphs[i].strip().lower())
-        matched = False
+    # Leading prefixes that indicate "author byline" in DOCX (e.g. "Par Auteur", "Entretien avec Auteur")
+    _BYLINE_PREFIXES = ('par ', 'entretien avec ', 'by ', 'propos recueillis par ')
+
+    def _matches_any_token(p_lower):
+        """Return True if p_lower (already _norm'd) matches any title/author token.
+
+        A match means the paragraph IS the title/author, not merely a sentence
+        that starts with the author's name.  The startswith check is therefore
+        guarded by a length constraint: the paragraph must not be much longer
+        than the token itself (otherwise it is article content, not a header).
+        """
         for tok in all_tokens:
             if not tok:
                 continue
             tok_n = _norm(tok)
-            # Para equals the token, or starts with it, or token starts with para
-            if (p_lower == tok_n
-                    or p_lower.startswith(tok_n[:30])
-                    or (len(p_lower) >= 10 and tok_n.startswith(p_lower[:30]))):
-                matched = True
-                break
-        if matched:
-            i += 1
-        else:
-            break
+            tok_len = len(tok_n)
+            # 1. Exact match
+            if p_lower == tok_n:
+                return True
+            # 2. Para starts with the token — but only if para is short enough
+            #    (guards against "Author wrote something interesting…" false positive)
+            if p_lower.startswith(tok_n[:30]) and len(p_lower) <= tok_len + 25:
+                return True
+            # 3. Token starts with the para — para is a short fragment of the title
+            if len(p_lower) >= 10 and tok_n.startswith(p_lower[:30]):
+                return True
+            # Try stripping leading byline prefix ("par auteur" → "auteur")
+            stripped = p_lower
+            for pfx in _BYLINE_PREFIXES:
+                if stripped.startswith(pfx):
+                    stripped = stripped[len(pfx):]
+                    break
+            if stripped != p_lower:
+                if (stripped == tok_n
+                        or (stripped.startswith(tok_n[:30]) and len(stripped) <= tok_len + 25)
+                        or (len(stripped) >= 10 and tok_n.startswith(stripped[:30]))):
+                    return True
+        return False
 
-    if i > 0:
-        return paragraphs[i:]
+    def _docx_strip(paras, max_scan=6):
+        """Strip leading paras that are title/author tokens. Returns (n_stripped, remaining)."""
+        j = 0
+        while j < min(max_scan, len(paras)):
+            p_lower = _norm(paras[j].strip().lower())
+            if _matches_any_token(p_lower):
+                j += 1
+            else:
+                break
+        return j, paras[j:]
+
+    # --- DOCX style: strip leading paragraphs that ARE the title / author ---
+    n, paragraphs = _docx_strip(paragraphs, max_scan=6)
+    if n > 0:
+        # One more pass to catch any further header lines exposed after first strip
+        _, paragraphs = _docx_strip(paragraphs, max_scan=3)
+        return paragraphs
 
     # --- PDF style: author name embedded early in paragraph 0-2 ---
     for i, para in enumerate(paragraphs[:3]):
-        para_lower = para.lower()
+        para_lower = _norm(para.lower())
         for token in author_tokens:
             if len(token) < 4:
                 continue
-            pos = para_lower.find(token)
+            pos = para_lower.find(_norm(token))
             if pos < 0 or pos > 200:
                 # Not found, or found deep in text (not a header)
                 continue
@@ -932,7 +980,10 @@ def strip_article_header(paragraphs, title, author):
             if len(after) > 25:
                 result.append(after)
             result.extend(paragraphs[i + 1:])
-            return result if result else paragraphs[i + 1:]
+            result = result if result else paragraphs[i + 1:]
+            # One DOCX-style cleanup pass on the result
+            _, result = _docx_strip(result, max_scan=3)
+            return result
 
     return paragraphs
 
@@ -1207,6 +1258,8 @@ def paragraphs_to_html(paragraphs, prebuilt_footnotes=None):
     used_ref_ids = set()
 
     def make_sup(n):
+        if n not in footnotes:
+            return ''   # No footnote text for this ref — skip to avoid broken link
         ref_id = f'ref-{n}'
         id_attr = f' id="{ref_id}"' if ref_id not in used_ref_ids else ''
         used_ref_ids.add(ref_id)
