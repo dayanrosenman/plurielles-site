@@ -10,6 +10,7 @@ import shutil
 import json
 import zipfile
 import datetime
+import statistics
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
@@ -725,7 +726,7 @@ def extract_pdf_text(pdf_path, fix_char_spacing=False, clip_bottom=0.86):
     short French words like "et le XXe siècle" into "etleXXesiècle".
 
     clip_bottom: fraction of page height to clip at bottom (default 0.86).
-    Use 0.92 for issues 12, 16, 22 whose content reaches closer to the footer.
+    Use 0.92 for issues 12, 16, 19, 22 whose content reaches closer to the footer.
     """
     _LIGATURES = str.maketrans({
         '\ufb00': 'ff', '\ufb01': 'fi', '\ufb02': 'fl',
@@ -745,58 +746,77 @@ def extract_pdf_text(pdf_path, fix_char_spacing=False, clip_bottom=0.86):
             # Clip away the top 11% (running headers) and bottom (footers/page numbers)
             clip = fitz.Rect(0, ph * 0.11, pw, ph * clip_bottom)
 
+            # Use dict mode for ALL PDFs: gives span-level font size (for
+            # superscript/footnote-ref detection) and flags (for italic markers).
+            page_dict = page.get_text("dict", clip=clip)
+
+            # First pass: collect sizes from spans with ≥2 visible chars to
+            # compute the dominant body-text font size (via median).
+            all_sizes = []
+            for blk in page_dict.get("blocks", []):
+                if blk.get("type") != 0:
+                    continue
+                for ln in blk.get("lines", []):
+                    for sp in ln.get("spans", []):
+                        t = sp.get("text", "").strip()
+                        sz = sp.get("size", 0)
+                        if sz > 0 and len(t) >= 2:
+                            all_sizes.append(sz)
+            dominant_size = statistics.median(all_sizes) if all_sizes else 0
+
+            # Second pass: build text with superscript and italic markers.
+            span_parts = []
+            for block in page_dict.get("blocks", []):
+                if block.get("type") != 0:   # skip image blocks
+                    continue
+                for line in block.get("lines", []):
+                    for span in line.get("spans", []):
+                        # translate(_STRIP_CTRL) removes \x00-\x04 garbage chars
+                        # that some PDFs with broken font encoding produce —
+                        # they would otherwise conflict with our marker bytes.
+                        s = span.get("text", "").translate(_LIGATURES).translate(_STRIP_CTRL)
+                        flags = span.get("flags", 0)
+                        font  = span.get("font", "")
+                        sz    = span.get("size", 0)
+                        t = s.strip()
+                        is_italic = bool(flags & 2) or \
+                                    "Italic" in font or "Oblique" in font
+                        # Superscript detection: a 1-2 digit span whose font size
+                        # is significantly smaller than the dominant body size is
+                        # almost certainly a footnote-reference superscript.
+                        # Mark it with \x01N\x02 so detect_footnotes can link it.
+                        if t and re.match(r'^\d{1,2}$', t) and \
+                                dominant_size > 0 and sz < dominant_size * 0.75:
+                            span_parts.append(f'\x01{t}\x02')
+                            continue
+                        # Italic wrapping (→ <em> in HTML):
+                        # • Skip for fix_char_spacing PDFs where italic metadata
+                        #   is unreliable (older char-by-char typesetting).
+                        # • Skip standalone 1-2 digit spans not caught above
+                        #   (page numbers / refs in non-italic oblique cut).
+                        if is_italic and t and not re.match(r'^\d{1,2}$', t) \
+                                and not fix_char_spacing:
+                            s = f'\x03{s}\x04'
+                        span_parts.append(s)
+                    span_parts.append('\n')   # newline at end of every line
+            text = ''.join(span_parts)
+            # Fix soft hyphenation across spans.
+            # Case 1: both sides same italic state → works normally.
+            # Case 2: continuation starts with \x03 → handle separately.
+            text = re.sub(r'-\n\x03([a-zàâäéèêëîïôùûüœ])',
+                          lambda m: '\x03' + m.group(1), text)
+            text = re.sub(r'-\n([a-zàâäéèêëîïôùûüœ])', r'\1', text)
+            # For fix_char_spacing issues (9, 10, 12, 22): collapse runs of
+            # single letters separated by spaces into one word.
+            # Only matches single-char groups (not 2-3 char tokens) to avoid
+            # accidentally joining distinct short words like "et le XXe".
+            # Requires ≥ 5 consecutive single letters to trigger (avoids false positives).
             if fix_char_spacing:
-                # Older PDFs (issues 9, 10, 12, 22): italic font metadata unreliable;
-                # use plain text mode so the char-spacing collapse regex works cleanly.
-                text = page.get_text("text", clip=clip)
-                text = text.translate(_LIGATURES).translate(_STRIP_CTRL)
-                # Fix soft hyphenation: word- + newline + lowercase → join
-                text = re.sub(r'-\n([a-zàâäéèêëîïôùûüœ])', r'\1', text)
-                # Collapse runs of single letters separated by spaces into one word.
-                # Only matches single-char groups (not 2-3 char tokens) to avoid
-                # accidentally joining distinct short words like "et le XXe".
-                # Requires ≥ 5 consecutive single letters to trigger (avoids false positives).
                 text = re.sub(
                     r'(?<!\S)([A-Za-zÀ-ÿ])( [A-Za-zÀ-ÿ]){4,}',
                     lambda m: m.group(0).replace(' ', ''),
                     text
                 )
-            else:
-                # Modern PDFs: use dict mode to get span-level font info so italic
-                # spans (book titles etc.) can be wrapped in \x03...\x04 markers,
-                # which are later converted to <em>...</em> in the HTML output.
-                page_dict = page.get_text("dict", clip=clip)
-                span_parts = []
-                for block in page_dict.get("blocks", []):
-                    if block.get("type") != 0:   # skip image blocks
-                        continue
-                    for line in block.get("lines", []):
-                        for span in line.get("spans", []):
-                            # translate(_STRIP_CTRL) removes \x00-\x04 garbage chars
-                            # that some PDFs with broken font encoding produce —
-                            # they would otherwise conflict with our marker bytes.
-                            s = span.get("text", "").translate(_LIGATURES).translate(_STRIP_CTRL)
-                            flags = span.get("flags", 0)
-                            font  = span.get("font", "")
-                            is_italic = bool(flags & 2) or \
-                                        "Italic" in font or "Oblique" in font
-                            # Don't wrap standalone 1-2 digit spans: these are
-                            # almost certainly footnote-reference superscripts
-                            # (or page numbers) typeset in an oblique/italic cut.
-                            # Wrapping them would produce \x03N\x04 which blocks
-                            # the _INLINE_REF lookbehind and breaks ref detection.
-                            if is_italic and s.strip() and \
-                                    not re.match(r'^\d{1,2}$', s.strip()):
-                                s = f'\x03{s}\x04'
-                            span_parts.append(s)
-                        span_parts.append('\n')   # newline at end of every line
-                text = ''.join(span_parts)
-                # Fix soft hyphenation across spans.
-                # Case 1: both sides same italic state → works normally.
-                # Case 2: continuation starts with \x03 → handle separately.
-                text = re.sub(r'-\n\x03([a-zàâäéèêëîïôùûüœ])',
-                              lambda m: '\x03' + m.group(1), text)
-                text = re.sub(r'-\n([a-zàâäéèêëîïôùûüœ])', r'\1', text)
 
             pages.append(text)
         doc.close()
@@ -1130,6 +1150,13 @@ def text_to_paragraphs(text):
                 if stripped_lead and (stripped_lead[0].isupper() or
                                       re.match(r'^[A-ZÀ-Ö]\.?\s', stripped_lead)):
                     starts_new = True
+        # A line starting with a footnote number prefix ("N. text") always
+        # starts a new paragraph, regardless of preceding punctuation.
+        # This handles footnote blocks that follow body text ending in "," or
+        # ":" — cases the sentence-ending test above would miss.
+        if not starts_new and current_words and \
+                re.match(r'^\d{1,2}\.\s*\S', stripped):
+            starts_new = True
 
         if starts_new:
             if current_words:
@@ -1312,22 +1339,29 @@ def detect_footnotes(paragraphs):
                 _next_fn[0] += 1
                 footnotes[_next_fn[0]] = text
 
-    # ── Collect body paragraphs ───────────────────────────────────────────────
+    # ── Two-pass footnote collection ─────────────────────────────────────────
+    # Pass 1: collect ALL explicit "N." footnote paragraphs (Case A) first.
+    # This ensures Case B (inline-ref extraction) can check whether fn_num's
+    # text has already been found — preventing body-text continuations from
+    # being mis-extracted as footnote content.
     raw_body = []
+    body_candidates = []   # paragraphs that are NOT explicit footnotes
 
     for para in paragraphs:
         # Drop "NOTES" / "NOTE" header lines
         if _NOTES_HEADER.match(para):
             continue
-
         # Case A: paragraph IS a footnote block (starts with "N." or "N ")
         if _is_fn_para(para):
             new_fns, fn_overflow = _split_fn_block(para)
             _add_footnotes(new_fns)
             if fn_overflow:
-                raw_body.append(fn_overflow)
-            continue
+                body_candidates.append(fn_overflow)
+        else:
+            body_candidates.append(para)
 
+    # Pass 2: process non-footnote paragraphs (Case B, C, D)
+    for para in body_candidates:
         # Case B: paragraph contains \x01N\x02 tokens inserted by text_to_paragraphs
         if _FN_TOK.search(para):
             chunks = _FN_TOK.split(para)
@@ -1337,8 +1371,18 @@ def detect_footnotes(paragraphs):
                 fn_num = int(chunks[i])
                 after = chunks[i + 1] if i + 1 < len(chunks) else ''
                 after_s = after.lstrip()
-                # Is what follows uppercase and substantial? → footnote text
-                if after_s and (after_s[0].isupper() or after_s[0] in '«\"\'(') and len(after_s) > 15:
+                # Only extract footnote text from "after" if ALL of:
+                #   1. Starts with uppercase/quote and is substantial (>15 chars)
+                #   2. No subsequent inline-ref token with >10 chars between
+                #      (which would indicate this ref is embedded mid-body)
+                #   3. fn_num NOT already in footnotes dict from Pass 1 (Case A)
+                #      (prevents re-extracting body text as duplicate footnote)
+                next_has_body = (i + 2 < len(chunks) and len(after_s) > 10)
+                already_found = fn_num in footnotes
+                if after_s and (after_s[0].isupper() or after_s[0] in '«\"\'(') \
+                        and len(after_s) > 15 \
+                        and not next_has_body \
+                        and not already_found:
                     body_buf = body_buf.rstrip() + f'\x01{fn_num}\x02'
                     fn_raw = str(fn_num) + '. ' + after_s
                     fn_dict, _ = _split_fn_block(fn_raw)
@@ -1382,7 +1426,7 @@ def detect_footnotes(paragraphs):
         # e.g. "…pays1." or "»1" at end — keep in body for later ref-linking
         raw_body.append(para)
 
-    # ── Pass 2: render body paragraphs, converting inline digit refs ──────────
+        # ── Pass 2: render body paragraphs, converting inline digit refs ──────────
     # Now we know which numbers are in footnotes; use that to decide whether
     # a trailing digit is a ref marker.
     body = raw_body  # keep as-is; paragraphs_to_html will handle inline ref sub
@@ -2048,20 +2092,20 @@ div.article-list__link .article-list__author {
   align-items: center;
   gap: 0.45em;
   margin-top: 1.25rem;
-  padding: 0.38rem 0.85rem;
-  border: 1px solid rgba(255,255,255,0.35);
+  padding: 0.42rem 1rem;
+  border: 1.5px solid var(--clr-accent);
   border-radius: 4px;
-  color: rgba(255,255,255,0.8);
+  color: var(--clr-accent);
   font-family: var(--font-ui);
   font-size: 0.78rem;
+  font-weight: 500;
   letter-spacing: 0.02em;
   text-decoration: none;
-  transition: background 0.18s, border-color 0.18s, color 0.18s;
+  transition: background 0.18s, color 0.18s;
 }
 .article-header__pdf:hover {
-  background: rgba(255,255,255,0.12);
-  border-color: rgba(255,255,255,0.7);
-  color: #fff;
+  background: var(--clr-accent);
+  color: var(--clr-dark);
 }
 
 .article-body {
@@ -2999,7 +3043,7 @@ def build():
                 print_nav = None
 
             for i, pdf in enumerate(pdfs):
-                clip_bottom = 0.92 if n in {12, 16, 22} else 0.86
+                clip_bottom = 0.92 if n in {12, 16, 19, 22} else 0.86
                 pages = extract_pdf_text(pdf, fix_char_spacing=(n in {9, 10, 12, 22}), clip_bottom=clip_bottom)
                 if not pages:
                     continue
@@ -3178,12 +3222,21 @@ def build():
         prev_link = f"{prev_slug}.html" if prev_slug else ""
         next_link = f"{next_slug}.html" if next_slug else ""
 
+        # Copy article PDF to assets for per-article download link
+        pdf23_dst_dir = OUTPUT / "assets" / "pdfs" / "articles" / "pl23"
+        pdf23_dst_dir.mkdir(parents=True, exist_ok=True)
+        pdf23_dst = pdf23_dst_dir / pdf.name
+        if not pdf23_dst.exists():
+            shutil.copy2(pdf, pdf23_dst)
+        pdf_url_23 = f"../../../assets/pdfs/articles/pl23/{pdf.name}"
+
         art_html = generate_article_page(
             23, ISSUES[23],
             escape_html(title),
             escape_html(author),
             body_html,
             prev_link, next_link,
+            pdf_url=pdf_url_23,
             article_slug=slug
         )
         (articles23_out / f"{slug}.html").write_text(art_html, encoding="utf-8")
